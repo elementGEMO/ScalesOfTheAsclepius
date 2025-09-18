@@ -24,18 +24,10 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Content\Networks\" />
-  </ItemGroup>
   
   <PropertyGroup>
     <NoWarn>$(NoWarn);NU1701;CS0618;CS0612</NoWarn>
     <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
   </PropertyGroup>
-  
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="call Weaver.bat $(OutDir) $(AssemblyName)" />
-  </Target>
 
 </Project>

@@ -6,6 +6,9 @@ using MonoMod.Cil;
 using Mono.Cecil.Cil;
 using UnityEngine.Networking;
 using UnityEngine.AddressableAssets;
+using RoR2.Items;
+using R2API.Networking.Interfaces;
+using R2API.Networking;
 
 namespace ScalesAsclepius;
 public class IVBagHooks
@@ -24,7 +27,9 @@ public class IVBagHooks
 
             RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
             IL.RoR2.HealthComponent.Heal += HealthComponent_Heal1;
-            On.RoR2.CharacterBody.OnInventoryChanged += CharacterBody_OnInventoryChanged;
+            //On.RoR2.CharacterBody.OnInventoryChanged += CharacterBody_OnInventoryChanged;
+
+            NetworkingAPI.RegisterMessageType<IVBagTether.IVTetherSync>();
         }
     }
 
@@ -79,9 +84,7 @@ public class IVBagHooks
                         float totalPercent  = amount * (IVBagItem.Heal_Percent.Value + itemScale);
 
                         healthAlly.Heal(totalPercent, newProcMask);
-                        bagBehaviour.TriggerVisual();
-
-                        Util.PlaySound("Play_treeBot_m1_hit_heal", body.gameObject);
+                        new IVBagTether.IVTetherSync(body.netId).Send(NetworkDestination.Clients);
                     }
                 }
             });
@@ -120,32 +123,27 @@ public class IVBagHooks
 
         healMat.SetColor("_TintColor", new Color(0, 0, 0));
         healSpot.sharedMaterial = healMat;
-
-        //TetherPrefab.AddComponent<NetworkIdentity>();
-        //PrefabAPI.RegisterNetworkPrefab(TetherPrefab);
     }
 }
 
-public class IVBagTether : NetworkBehaviour
+public class IVBagTether : BaseItemBodyBehavior
 {
-    //[SyncVar]
     public CharacterBody TargetLink;
-    //[SyncVar]
     public GameObject ActiveTether;
 
     private CharacterBody Owner;
     private MaterialPropertyBlock PropertySet;
-    [SyncVar]
     private TetherVfxOrigin TetherEffect;
 
     private ParticleSystemRenderer CurrentHeal;
     private LineRenderer CurrentTether;
 
-    //[SyncVar]
     public float Duration;
     private float GlowHue;
 
-    public void Awake()
+    [ItemDefAssociation(useOnServer = true, useOnClient = true)]
+    public static ItemDef GetItemDef() => (IVBagItem.Item_Enabled.Value) ? IVBagItem.ItemDef : null;
+    public void OnEnable()
     {
         if (!IVBagItem.Item_Enabled.Value) return;
 
@@ -206,5 +204,26 @@ public class IVBagTether : NetworkBehaviour
         if (CurrentTether) CurrentTether.GetComponent<Renderer>().SetPropertyBlock(PropertySet);
         if (CurrentHeal) CurrentHeal.GetComponent<Renderer>().SetPropertyBlock(PropertySet);
     }
-    public void TriggerVisual() => Duration = 0.5f;
+    public void TriggerVisual()
+    {
+        Duration = 0.5f;
+        Util.PlaySound("Play_treeBot_m1_hit_heal", Owner.gameObject);
+    }
+    public class IVTetherSync : INetMessage
+    {
+        NetworkInstanceId NetID;
+        public IVTetherSync() { }
+        public IVTetherSync(NetworkInstanceId setID) => NetID = setID;
+        public void Deserialize(NetworkReader reader) => NetID = reader.ReadNetworkId();
+
+        public void OnReceived()
+        {
+            GameObject bodyObject       = Util.FindNetworkObject(NetID);
+            IVBagTether tetherComponent = bodyObject?.GetComponent<IVBagTether>();
+
+            if (tetherComponent) tetherComponent.TriggerVisual();
+        }
+
+        public void Serialize(NetworkWriter writer) => writer.Write(NetID);
+    }
 }
