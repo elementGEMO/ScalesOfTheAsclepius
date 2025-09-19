@@ -20,6 +20,8 @@ public class IVBagItem : ItemBase
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier2;
     protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility];
+    protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("IVBagModel");
+    protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("IVBagRender");
 
     protected override string DisplayName => "IV Bag";
     protected override string Description => string.Format(
@@ -64,5 +66,21 @@ public class IVBagItem : ItemBase
     {
         ItemDef = Value;
         ItemDef.requiredExpansion = SotAPlugin.ScalesAsclepiusExp;
+    }
+    protected override void LogDisplay()
+    {
+        ModelPanelParameters modelParam = PickupModelPrefab.AddComponent<ModelPanelParameters>();
+        var foundMesh = PickupModelPrefab.transform.GetChild(0);
+
+        if (!foundMesh) return;
+
+        modelParam.focusPointTransform = foundMesh;
+        modelParam.cameraPositionTransform = foundMesh;
+        modelParam.minDistance = 0.05f * 25f;
+        modelParam.maxDistance = 0.25f * 25f;
+        modelParam.modelRotation = new Quaternion(0.0115291597f, -0.587752283f, 0.0455321521f, -0.807676435f);
+
+        FloatingPointFix modelScale = PickupModelPrefab.AddComponent<FloatingPointFix>();
+        modelScale.sizeModifier = 1f;
     }
 }

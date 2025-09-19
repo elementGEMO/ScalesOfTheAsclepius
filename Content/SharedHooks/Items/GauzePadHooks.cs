@@ -12,7 +12,7 @@ public class GauzePadHooks
     //private static readonly string InternalName = "GauzePadHooks";
     public static bool ItemEnabled;
 
-    private GameObject SplashEffect;
+    private EffectDef SplashEffect;
 
     public GauzePadHooks()
     {
@@ -20,8 +20,7 @@ public class GauzePadHooks
 
         if (ItemEnabled)
         {
-            SplashEffect = Addressables.LoadAsset<GameObject>("RoR2/Base/Phasing/ProcStealthkit.prefab").WaitForCompletion().InstantiateClone("GauzePadProc");
-            foreach (Transform transform in SplashEffect.GetComponentsInChildren<Transform>()) transform.localScale = Vector3.one * 0.5f;
+            CreateSplashEffect();
 
             RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
             On.RoR2.DotController.OnDotStackAddedServer += DotController_OnDotStackAddedServer;
@@ -29,12 +28,29 @@ public class GauzePadHooks
         }
     }
 
+    private void CreateSplashEffect()
+    {
+        GameObject tempPrefab = Addressables.LoadAsset<GameObject>("RoR2/Base/Phasing/ProcStealthkit.prefab").WaitForCompletion().InstantiateClone("GauzePadProc");
+        EffectComponent effect = tempPrefab.GetComponent<EffectComponent>();
+
+        foreach (Transform transform in tempPrefab.GetComponentsInChildren<Transform>()) transform.localScale = Vector3.one * 0.5f;
+
+        SplashEffect = new()
+        {
+            prefab = tempPrefab,
+            prefabName = "GauzePadProc",
+            prefabEffectComponent = effect
+        };
+
+        ContentAddition.AddEffect(SplashEffect.prefab);
+    }
+
     private void AddHealFromDebuff(CharacterBody self)
     {
         int itemCount = self.inventory.GetItemCount(GauzePadItem.ItemDef);
         if (itemCount > 0)
         {
-            EffectManager.SimpleEffect(SplashEffect, self.corePosition, self.transform.rotation, true);
+            EffectManager.SimpleEffect(SplashEffect.prefab, self.corePosition, self.transform.rotation, true);
             self.ApplyBuff(HealFromDebuff.BuffDef.buffIndex, 1, GauzePadItem.Duration.Value);
             Util.PlaySound("Play_scav_backpack_open", self.gameObject);
         }

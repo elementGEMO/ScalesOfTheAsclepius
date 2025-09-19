@@ -25,11 +25,9 @@ public class IVBagHooks
         {
             CreateTether();
 
+            NetworkingAPI.RegisterMessageType<IVBagTether.IVTetherSync>();
             RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
             IL.RoR2.HealthComponent.Heal += HealthComponent_Heal1;
-            //On.RoR2.CharacterBody.OnInventoryChanged += CharacterBody_OnInventoryChanged;
-
-            NetworkingAPI.RegisterMessageType<IVBagTether.IVTetherSync>();
         }
     }
 
@@ -80,7 +78,7 @@ public class IVBagHooks
 
                     if (healthAlly)
                     {
-                        float itemScale     = IVBagItem.Item_Scale.Value * (itemCount - 1);
+                        float itemScale     = IVBagItem.Heal_Percent.Value * IVBagItem.Item_Scale.Value * (itemCount - 1);
                         float totalPercent  = amount * (IVBagItem.Heal_Percent.Value + itemScale);
 
                         healthAlly.Heal(totalPercent, newProcMask);

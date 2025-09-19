@@ -44,7 +44,7 @@ public class BubbleWrapHooks
         {
             prefab = tempPrefab,
             prefabName = "BubbleWrapProc",
-            prefabEffectComponent = effect
+            prefabEffectComponent = effect,
         };
 
         ContentAddition.AddEffect(BounceEffect.prefab);
