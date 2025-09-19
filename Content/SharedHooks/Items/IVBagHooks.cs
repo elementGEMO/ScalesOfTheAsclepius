@@ -165,6 +165,12 @@ public class IVBagTether : BaseItemBodyBehavior
     }
     public void OnDestroy()
     {
+        if (NetworkServer.active)
+        {
+            if (Owner && Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.RemoveBuff(TetherArmorBuff.BuffDef);
+            if (TargetLink) TargetLink.RemoveBuff(TetherArmorBuff.BuffDef);
+        }
+
         TetherEffect.onTetherAdded -= SetUpTether;
         Destroy(TetherEffect);
     }
@@ -189,21 +195,23 @@ public class IVBagTether : BaseItemBodyBehavior
             }
         }
 
+        if (NetworkServer.active)
+        {
+            if (TargetLink != closestAlly)
+            {
+                if (TargetLink) TargetLink.RemoveBuff(TetherArmorBuff.BuffDef);
+                if (closestAlly) closestAlly.AddBuff(TetherArmorBuff.BuffDef);
+            }
+
+            if (TargetLink && !Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.AddBuff(TetherArmorBuff.BuffDef);
+            else if (!TargetLink && Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.RemoveBuff(TetherArmorBuff.BuffDef);
+        }
+
         TargetLink = closestAlly;
     }
     public void LateUpdate()
     {
-        if (TargetLink)
-        {
-            TetherEffect.SetTetheredTransforms([TargetLink.transform]);
-
-            if (NetworkServer.active)
-            {
-                Owner.AddTimedBuff(TetherArmorBuff.BuffDef, 0.05f);
-                TargetLink.AddTimedBuff(TetherArmorBuff.BuffDef, 0.05f);
-            }
-        }
-
+        if (TargetLink) TetherEffect.SetTetheredTransforms([TargetLink.transform]);
         if (ActiveTether) ActiveTether.SetActive(TargetLink);
 
         float colorLerp = Mathf.MoveTowards(GlowHue, Duration > 0f ? 2f : 0f, Time.deltaTime * 15f);
