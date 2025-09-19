@@ -87,6 +87,7 @@ namespace ScalesAsclepius
         private void CreateBuffs()
         {
             new HealFromDebuff();
+            new TetherArmorBuff();
         }
         private void CreateItems()
         {

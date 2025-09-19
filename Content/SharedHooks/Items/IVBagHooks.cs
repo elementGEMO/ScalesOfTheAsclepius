@@ -33,6 +33,8 @@ public class IVBagHooks
 
     private void RecalculateStatsAPI_GetStatCoefficients(CharacterBody sender, RecalculateStatsAPI.StatHookEventArgs args)
     {
+        if (sender && sender.HasBuff(TetherArmorBuff.BuffDef)) args.armorAdd = IVBagItem.Flat_Armor.Value;
+        /*
         if (sender?.inventory && NetworkServer.active)
         {
             IVBagTether bagTether = sender.GetComponent<IVBagTether>();
@@ -44,6 +46,7 @@ public class IVBagHooks
                 if (bagTether.Duration <= 0 && activeTether && bagTether.ActiveTether.active) args.armorAdd = IVBagItem.Flat_Armor.Value;
             }
         }
+        */
     }
 
     private void HealthComponent_Heal1(ILContext il)
@@ -190,7 +193,17 @@ public class IVBagTether : BaseItemBodyBehavior
     }
     public void LateUpdate()
     {
-        if (TargetLink) TetherEffect.SetTetheredTransforms([TargetLink.transform]);
+        if (TargetLink)
+        {
+            TetherEffect.SetTetheredTransforms([TargetLink.transform]);
+
+            if (NetworkServer.active)
+            {
+                Owner.AddTimedBuff(TetherArmorBuff.BuffDef, 0.05f);
+                TargetLink.AddTimedBuff(TetherArmorBuff.BuffDef, 0.05f);
+            }
+        }
+
         if (ActiveTether) ActiveTether.SetActive(TargetLink);
 
         float colorLerp = Mathf.MoveTowards(GlowHue, Duration > 0f ? 2f : 0f, Time.deltaTime * 15f);

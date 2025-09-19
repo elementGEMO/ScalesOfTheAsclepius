@@ -20,9 +20,11 @@ public class GauzePadItem : ItemBase
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier1;
     protected override ItemTag[] Tags => [ItemTag.Healing];
+    protected override bool IsRemovable => true;
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("gauzePadModel");
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("gauzeIconRender");
+
     protected override string DisplayName => "Gauze Pad";
     protected override string Description => string.Format(
         "Increase base health regeneration".Style(FontColor.cIsHealing) + " by" + " {0} hp/s".Style(FontColor.cIsHealing) + " ({1} hp/s per stack)".Style(FontColor.cStack) + " for" + " {2}s".Style(FontColor.cIsUtility) + " when gaining a " + "debuff".Style(FontColor.cIsDamage) + ".",

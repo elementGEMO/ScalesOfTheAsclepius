@@ -25,6 +25,7 @@ public class BubbleWrapItem : ItemBase
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("bubbleWrapModel");
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("bubbleIconRender");
+
     protected override string DisplayName => "Bubble Wrap";
     protected override string Description => string.Format(
         "Reduce all " + "debuff ".Style(FontColor.cIsDamage) + "durations by " + "{0} ".Style(FontColor.cIsUtility) + "second" + "s".OptText(Debuff_Reduce.Value > 1 || Debuff_Reduce.Value < -1) +". " +

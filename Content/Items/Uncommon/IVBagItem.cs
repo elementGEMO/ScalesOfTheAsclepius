@@ -20,17 +20,19 @@ public class IVBagItem : ItemBase
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier2;
     protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility];
+    protected override bool IsRemovable => true;
+
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("IVBagModel");
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("IVBagRender");
 
     protected override string DisplayName => "IV Bag";
     protected override string Description => string.Format(
         "Tether ".Style(FontColor.cIsHealing) + "to the nearest ally within " + "{0}m".Style(FontColor.cIsUtility) +
-        ". While " + "tethered".Style(FontColor.cIsHealing) + ", share " + "{1}% ".Style(FontColor.cIsHealing) + "({2}% per stack) ".Style(FontColor.cStack) + "of " + "all healing".Style(FontColor.cIsHealing) +
-        ", or " + "increase armor ".Style(FontColor.cIsHealing) + "by " + "{3} ".Style(FontColor.cIsHealing) + "when no healing is shared.",
+        ". While " + "tethered".Style(FontColor.cIsHealing) + ", share " + "{1}% ".Style(FontColor.cIsHealing) + "({2}% per stack) ".Style(FontColor.cStack) + "of " + "all healing ".Style(FontColor.cIsHealing) +
+        "and " + "increase armor ".Style(FontColor.cIsHealing) + "by " + "{3} ".Style(FontColor.cIsHealing) + "on you and your ally.",
         RoundVal(Radius.Value), RoundVal(Heal_Percent.Value * 100f), RoundVal(Heal_Percent.Value * Item_Scale.Value * 100f).SignVal(), RoundVal(Flat_Armor.Value)
     );
-    protected override string PickupText => "Tether to a nearby ally, sharing health or gaining armor." ;
+    protected override string PickupText => "Tether to a nearby ally, share health and gaining armor." ;
 
     protected override bool IsEnabled()
     {
