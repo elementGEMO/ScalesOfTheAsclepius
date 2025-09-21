@@ -9,6 +9,7 @@ using UnityEngine.AddressableAssets;
 using RoR2.Items;
 using R2API.Networking.Interfaces;
 using R2API.Networking;
+using System.Collections.Generic;
 
 namespace ScalesAsclepius;
 public class IVBagHooks
@@ -16,6 +17,7 @@ public class IVBagHooks
     //private static readonly string InternalName = "IVBagHooks";
     public static bool ItemEnabled;
     public static GameObject TetherPrefab;
+    public static ModdedProcType HealShare;
 
     public IVBagHooks()
     {
@@ -28,25 +30,47 @@ public class IVBagHooks
             NetworkingAPI.RegisterMessageType<IVBagTether.IVTetherSync>();
             RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
             IL.RoR2.HealthComponent.Heal += HealthComponent_Heal1;
+            HealShare = ProcTypeAPI.ReserveProcType();
         }
+    }
+
+    private void CreateTether()
+    {
+        TetherPrefab = Addressables.LoadAssetAsync<GameObject>("RoR2/DLC1/EliteEarth/AffixEarthTetherVFX.prefab").WaitForCompletion().InstantiateClone("IVBagTether", true);
+
+        LineRenderer disableLine = TetherPrefab.GetComponent<LineRenderer>();
+        Material disableMat = new(disableLine.sharedMaterial);
+
+        disableMat.SetColor("_TintColor", new Color(0, 0, 0));
+        disableLine.SetSharedMaterials([disableMat], 1);
+
+        UnityEngine.Object.Destroy(TetherPrefab.transform.Find("EndTransform/HealedFX/HealingSymbols_Ps").gameObject);
+        UnityEngine.Object.Destroy(TetherPrefab.transform.Find("EndTransform/HealedFX/HealingGlow_Ps").gameObject);
+        UnityEngine.Object.Destroy(TetherPrefab.GetComponent<LoopSoundPlayer>());
+
+        ParticleSystemRenderer healSpot = TetherPrefab.transform.Find("EndTransform/HealedFX/HealingGlow_Ps (1)").GetComponent<ParticleSystemRenderer>();
+        Material healMat = new(healSpot.sharedMaterial);
+
+        healMat.SetColor("_TintColor", new Color(0, 0, 0));
+        healSpot.sharedMaterial = healMat;
     }
 
     private void RecalculateStatsAPI_GetStatCoefficients(CharacterBody sender, RecalculateStatsAPI.StatHookEventArgs args)
     {
-        if (sender && sender.HasBuff(TetherArmorBuff.BuffDef)) args.armorAdd = IVBagItem.Flat_Armor.Value;
-        /*
-        if (sender?.inventory && NetworkServer.active)
+        if (sender && sender.HasBuff(TetherArmorBuff.BuffDef))
         {
-            IVBagTether bagTether = sender.GetComponent<IVBagTether>();
-            int itemCount = sender?.inventory ? sender.inventory.GetItemCount(IVBagItem.ItemDef) : 0;
-            bool activeTether = bagTether?.ActiveTether;
+            float armorAmount = IVBagItem.Flat_Armor.Value;
 
-            if (bagTether && itemCount > 0)
+            if (IVBagItem.Flat_Armor_Stack.Value > 0)
             {
-                if (bagTether.Duration <= 0 && activeTether && bagTether.ActiveTether.active) args.armorAdd = IVBagItem.Flat_Armor.Value;
+                int buffCount = sender.GetBuffCount(TetherArmorBuff.BuffDef);
+                float buffScale = IVBagItem.Flat_Armor_Stack.Value * (buffCount - 1);
+
+                armorAmount += buffScale;
             }
+
+            args.armorAdd = armorAmount;
         }
-        */
     }
 
     private void HealthComponent_Heal1(ILContext il)
@@ -68,23 +92,29 @@ public class IVBagHooks
 
             cursor.EmitDelegate<Action<HealthComponent, float, ProcChainMask, bool>>((self, amount, procChainMask, nonRegen) =>
             {
-                bool canActivate            = nonRegen && !procChainMask.HasProc(ProcType.Missile);
                 CharacterBody body          = self.GetComponent<CharacterBody>();
-                IVBagTether bagBehaviour    = body?.GetComponent<IVBagTether>();
+                IVBagTether bagComponent    = body?.GetComponent<IVBagTether>();
                 int itemCount               = body?.inventory ? body.inventory.GetItemCount(IVBagItem.ItemDef) : 0;
+                bool inProcChain            = procChainMask.HasModdedProc(HealShare);
 
-                if (bagBehaviour?.ActiveTether && canActivate)
+                if (amount > 0.5f && bagComponent?.TargetLinks.Count > 0 && !inProcChain)
                 {
-                    CharacterBody targetAlly    = bagBehaviour.TargetLink;
-                    HealthComponent healthAlly  = targetAlly?.GetComponent<HealthComponent>();
-                    ProcChainMask newProcMask   = new(); newProcMask.AddProc(ProcType.Missile);
-
-                    if (healthAlly)
+                    foreach (Transform target in bagComponent.TargetLinks)
                     {
-                        float itemScale     = IVBagItem.Heal_Percent.Value * IVBagItem.Item_Scale.Value * (itemCount - 1);
-                        float totalPercent  = amount * (IVBagItem.Heal_Percent.Value + itemScale);
+                        HealthComponent ally = target.GetComponent<HealthComponent>();
 
-                        healthAlly.Heal(totalPercent, newProcMask);
+                        if (!ally) continue;
+
+                        ProcChainMask healMask  = new(); healMask.AddModdedProc(HealShare);
+                        float healPercent       = IVBagItem.Heal_Percent.Value;
+
+                        if (IVBagItem.Heal_Percent_Stack.Value > 0)
+                        {
+                            float itemScale = IVBagItem.Heal_Percent_Stack.Value * (itemCount - 1);
+                            healPercent += itemScale;
+                        }
+
+                        ally.Heal(amount * healPercent / 100f, healMask);
                         new IVBagTether.IVTetherSync(body.netId).Send(NetworkDestination.Clients);
                     }
                 }
@@ -105,39 +135,17 @@ public class IVBagHooks
             if (!bagTether && itemCount > 0) self.gameObject.AddComponent<IVBagTether>();
         }
     }
-
-    private void CreateTether()
-    {
-        TetherPrefab = Addressables.LoadAssetAsync<GameObject>("RoR2/DLC1/EliteEarth/AffixEarthTetherVFX.prefab").WaitForCompletion().InstantiateClone("IVBagTether", true);
-
-        LineRenderer disableLine    = TetherPrefab.GetComponent<LineRenderer>();
-        Material disableMat         = new (disableLine.sharedMaterial);
-
-        disableMat.SetColor("_TintColor", new Color(0, 0, 0));
-        disableLine.SetSharedMaterials([disableMat], 1);
-
-        UnityEngine.Object.Destroy(TetherPrefab.transform.Find("EndTransform/HealedFX/HealingSymbols_Ps").gameObject);
-        UnityEngine.Object.Destroy(TetherPrefab.transform.Find("EndTransform/HealedFX/HealingGlow_Ps").gameObject);
-
-        ParticleSystemRenderer healSpot = TetherPrefab.transform.Find("EndTransform/HealedFX/HealingGlow_Ps (1)").GetComponent<ParticleSystemRenderer>();
-        Material healMat                = new(healSpot.sharedMaterial);
-
-        healMat.SetColor("_TintColor", new Color(0, 0, 0));
-        healSpot.sharedMaterial = healMat;
-    }
 }
 
 public class IVBagTether : BaseItemBodyBehavior
 {
-    public CharacterBody TargetLink;
-    public GameObject ActiveTether;
+    public List<Transform> TargetLinks;
+    public List<GameObject> ActiveTethers;
+    private List<Renderer> TetherRenders;
 
     private CharacterBody Owner;
     private MaterialPropertyBlock PropertySet;
     private TetherVfxOrigin TetherEffect;
-
-    private ParticleSystemRenderer CurrentHeal;
-    private LineRenderer CurrentTether;
 
     public float Duration;
     private float GlowHue;
@@ -156,63 +164,101 @@ public class IVBagTether : BaseItemBodyBehavior
 
         PropertySet = new();
         TetherEffect.onTetherAdded += SetUpTether;
+        TetherEffect.onTetherRemoved += RemoveTether;
+
+        TargetLinks = [];
+        ActiveTethers = [];
+        TetherRenders = [];
     }
     public void SetUpTether(TetherVfx tether, Transform transform)
     {
-        ActiveTether = tether.gameObject;
-        CurrentTether = ActiveTether.GetComponent<LineRenderer>();
-        CurrentHeal = ActiveTether.transform.Find("EndTransform/HealedFX/HealingGlow_Ps (1)")?.GetComponent<ParticleSystemRenderer>();
+        GameObject newTether = tether.gameObject;
+        Renderer lineRender = newTether.GetComponent<LineRenderer>().GetComponent<Renderer>();
+        Renderer particleRender = newTether.transform.Find("EndTransform/HealedFX/HealingGlow_Ps (1)")?.GetComponent<ParticleSystemRenderer>().GetComponent<Renderer>();
+
+        ActiveTethers.Add(newTether);
+        TetherRenders.Add(lineRender);
+        TetherRenders.Add(particleRender);
+    }
+    public void RemoveTether(TetherVfx tether)
+    {
+        GameObject oldTether = tether.gameObject;
+        Renderer lineRender = oldTether.GetComponent<LineRenderer>().GetComponent<Renderer>();
+        Renderer particleRender = oldTether.transform.Find("EndTransform/HealedFX/HealingGlow_Ps (1)")?.GetComponent<ParticleSystemRenderer>().GetComponent<Renderer>();
+
+        if (ActiveTethers.Contains(oldTether)) ActiveTethers.Remove(oldTether);
+        if (TetherRenders.Contains(lineRender)) TetherRenders.Remove(lineRender);
+        if (TetherRenders.Contains(particleRender)) TetherRenders.Remove(particleRender);
     }
     public void OnDestroy()
     {
-        if (NetworkServer.active)
-        {
-            if (Owner && Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.RemoveBuff(TetherArmorBuff.BuffDef);
-            if (TargetLink) TargetLink.RemoveBuff(TetherArmorBuff.BuffDef);
-        }
-
         TetherEffect.onTetherAdded -= SetUpTether;
+        TetherEffect.onTetherRemoved -= RemoveTether;
         Destroy(TetherEffect);
     }
     public void Update()
     {
         Duration = Math.Max(0f, Duration - Time.deltaTime);
+        TargetLinks.Clear();
 
-        CharacterBody closestAlly = null;
-        var allyListReadOnly = TeamComponent.GetTeamMembers(Owner.teamComponent.teamIndex);
-        float deltaAlly = float.MaxValue;
+        List<HurtBox> hurtBoxList   = HG.CollectionPool<HurtBox, List<HurtBox>>.RentCollection();
+        TeamMask allyMask           = TeamMask.none; allyMask.AddTeam(Owner.teamComponent.teamIndex);
+        int itemCount               = Owner.inventory.GetItemCount(IVBagItem.ItemDef);
+        float radius                = IVBagItem.Radius.Value;
 
-        foreach (TeamComponent foundTeam in allyListReadOnly)
+        if (RunArtifactManager.instance.IsArtifactEnabled(RoR2Content.Artifacts.FriendlyFire))
         {
-            CharacterBody ally = foundTeam.body;
-            if (ally == Owner) continue;
+            allyMask = TeamMask.GetEnemyTeams(Owner.teamComponent.teamIndex);
+            allyMask.AddTeam(Owner.teamComponent.teamIndex);
+        }
 
-            float delta = (Owner.transform.position - ally.transform.position).sqrMagnitude;
-            if (delta <= Math.Pow(IVBagItem.Radius.Value, 2) && delta < deltaAlly)
-            {
-                closestAlly = ally;
-                deltaAlly = delta;
-            }
+        if (IVBagItem.Radius_Stack.Value > 0)
+        {
+            float itemScale = IVBagItem.Radius_Stack.Value * (itemCount - 1);
+            radius += itemScale;
+        }
+
+        SphereSearch radiusSearch = new()
+        {
+            radius = radius,
+            origin = Owner.transform.position,
+            mask = LayerIndex.entityPrecise.mask,
+            queryTriggerInteraction = QueryTriggerInteraction.UseGlobal
+        };
+
+        radiusSearch.RefreshCandidates();
+        radiusSearch.FilterCandidatesByHurtBoxTeam(allyMask);
+        radiusSearch.OrderCandidatesByDistance();
+        radiusSearch.FilterCandidatesByDistinctHurtBoxEntities();
+        radiusSearch.GetHurtBoxes(hurtBoxList);
+
+        int targetLimit = IVBagItem.Target_Count.Value;
+
+        if (IVBagItem.Target_Count_Stack.Value > 0)
+        {
+            int itemScale = IVBagItem.Target_Count_Stack.Value * (itemCount - 1);
+            targetLimit += itemScale;
+        }
+
+        int currentIndex    = 0;
+        int limit           = Math.Min(targetLimit, hurtBoxList.Count);
+
+        while (TargetLinks.Count < limit && currentIndex < hurtBoxList.Count)
+        {
+            CharacterBody currentAlly = hurtBoxList[currentIndex]?.healthComponent.body;
+            if (currentAlly != Owner) TargetLinks.Add(currentAlly.transform);
+            currentIndex++;
         }
 
         if (NetworkServer.active)
         {
-            if (TargetLink != closestAlly)
-            {
-                if (TargetLink) TargetLink.RemoveBuff(TetherArmorBuff.BuffDef);
-                if (closestAlly) closestAlly.AddBuff(TetherArmorBuff.BuffDef);
-            }
-
-            if (TargetLink && !Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.AddBuff(TetherArmorBuff.BuffDef);
-            else if (!TargetLink && Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.RemoveBuff(TetherArmorBuff.BuffDef);
+            if (TargetLinks.Count <= 0 && Owner.GetBuffCount(TetherArmorBuff.BuffDef) != itemCount) Owner.SetBuffCount(TetherArmorBuff.BuffDef.buffIndex, itemCount);
+            else if (TargetLinks.Count > 0 && Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.SetBuffCount(TetherArmorBuff.BuffDef.buffIndex, 0);
         }
-
-        TargetLink = closestAlly;
     }
     public void LateUpdate()
     {
-        if (TargetLink) TetherEffect.SetTetheredTransforms([TargetLink.transform]);
-        if (ActiveTether) ActiveTether.SetActive(TargetLink);
+        TetherEffect.SetTetheredTransforms(TargetLinks);
 
         float colorLerp = Mathf.MoveTowards(GlowHue, Duration > 0f ? 2f : 0f, Time.deltaTime * 15f);
         Color setHue = new(GlowHue, GlowHue, GlowHue);
@@ -220,8 +266,7 @@ public class IVBagTether : BaseItemBodyBehavior
         GlowHue = colorLerp;
         PropertySet.SetColor("_TintColor", setHue);
 
-        if (CurrentTether) CurrentTether.GetComponent<Renderer>().SetPropertyBlock(PropertySet);
-        if (CurrentHeal) CurrentHeal.GetComponent<Renderer>().SetPropertyBlock(PropertySet);
+        foreach (Renderer render in TetherRenders) render.SetPropertyBlock(PropertySet);
     }
     public void TriggerVisual()
     {

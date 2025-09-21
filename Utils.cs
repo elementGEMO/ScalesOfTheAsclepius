@@ -17,10 +17,12 @@ internal static class SALanguage
 
 internal static class SAUtils
 {
-    public static string SignVal(this float value) => value >= 0f ? "+" + value : "-" + value;
-    public static string SignVal(this int value) => value >= 0 ? "+" + value : "-" + value;
+    public static string SignVal(this float value) => value >= 0f ? "+" + value : "" + value;
+    public static string SignVal(this int value) => value >= 0 ? "+" + value : "" + value;
     public static float RoundVal(float value) => MathF.Round(value, PluginConfig.Round_To.Value);
     public static string OptText(this string self, bool value) => value ? self : "";
+    public static string OptText(this string self, string opt, bool value) => value ? self : opt;
+    public static string FuseText(List<string> allStrings) => string.Join("", allStrings);
 }
 internal static class SAColors
 {
