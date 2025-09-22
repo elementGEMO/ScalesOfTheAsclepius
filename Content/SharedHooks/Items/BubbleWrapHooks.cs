@@ -1,12 +1,8 @@
 ﻿using RoR2;
 using R2API;
 using System;
-using R2API.Networking;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.Networking;
-using MonoMod.Cil;
-using Mono.Cecil;
 
 namespace ScalesAsclepius;
 public class BubbleWrapHooks
@@ -52,14 +48,22 @@ public class BubbleWrapHooks
 
     private void AddHealFromDebuff(CharacterBody self)
     {
-        int itemCount = self.inventory.GetItemCount(BubbleWrapItem.ItemDef);
+        int itemCount = self?.inventory ? self.inventory.GetItemCount(BubbleWrapItem.ItemDef) : 0;
+
         if (itemCount > 0)
         {
-            float itemScale = BubbleWrapItem.Heal_Percent.Value * BubbleWrapItem.Item_Scale.Value * (itemCount - 1);
-            float totalHeal = BubbleWrapItem.Heal_Percent.Value + itemScale;
+            ProcChainMask healMask  = new();
+            float healPercent       = BubbleWrapItem.Heal_Percent.Value;
 
+            if (BubbleWrapItem.Heal_Percent_Stack.Value > 0)
+            {
+                float itemScale = BubbleWrapItem.Heal_Percent_Stack.Value * (itemCount - 1);
+                healPercent += itemScale;
+            }
+
+            self.GetComponent<HealthComponent>().HealFraction(healPercent / 100f, healMask);
             Util.PlaySound("Play_gup_step", self.gameObject);
-            self.GetComponent<HealthComponent>().HealFraction(totalHeal, new ProcChainMask());
+
             EffectManager.SpawnEffect(BounceEffect.prefab, new EffectData()
             {
                 rootObject = self.gameObject,
@@ -94,10 +98,20 @@ public class BubbleWrapHooks
     {
         if (self?.inventory)
         {
-            int itemCount   = self.inventory.GetItemCount(BubbleWrapItem.ItemDef);
-            bool isHarmful  = buffDef.isDebuff || buffDef.isDOT || buffDef.isCooldown;
+            int itemCount       = self.inventory.GetItemCount(BubbleWrapItem.ItemDef);
+            bool isHarmful      = buffDef.isDebuff || buffDef.isDOT || buffDef.isCooldown;
+            float timeReduce    = BubbleWrapItem.Debuff_Reduce.Value;
 
-            if (itemCount > 0 && isHarmful) duration = Math.Max(0f, duration - BubbleWrapItem.Debuff_Reduce.Value);
+            if (itemCount > 0 && isHarmful)
+            {
+                if (BubbleWrapItem.Debuff_Reduce_Stack.Value > 0)
+                {
+                    float itemScale = BubbleWrapItem.Debuff_Reduce_Stack.Value * (itemCount - 1);
+                    timeReduce += itemScale;
+                }
+
+                duration = Math.Max(0f, duration - timeReduce);
+            }
         }
 
         orig(self, buffDef, duration);
