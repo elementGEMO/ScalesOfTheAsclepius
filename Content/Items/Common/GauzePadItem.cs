@@ -1,8 +1,7 @@
-﻿using BepInEx.Configuration;
-using RoR2;
+﻿using RoR2;
 using R2API;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
+using BepInEx.Configuration;
 
 namespace ScalesAsclepius;
 using static SAColors;
@@ -11,10 +10,13 @@ using static SAREnderHelpers;
 public class GauzePadItem : ItemBase
 {
     public static ConfigEntry<bool> Item_Enabled;
+
     public static ConfigEntry<float> Heal_Amount;
-    public static ConfigEntry<float> Level_Scale;
-    public static ConfigEntry<float> Item_Scale;
+    public static ConfigEntry<float> Heal_Amount_Stack;
     public static ConfigEntry<float> Duration;
+    public static ConfigEntry<float> Duration_Stack;
+
+    public static float Level_Scale = 0.2f; // Why I would let the normal user change regular basis level scaling
 
     protected override string Name => "GauzePad";
     public static ItemDef ItemDef;
@@ -26,10 +28,13 @@ public class GauzePadItem : ItemBase
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("gauzeIconRender");
 
     protected override string DisplayName => "Gauze Pad";
-    protected override string Description => string.Format(
-        "Increase base health regeneration".Style(FontColor.cIsHealing) + " by" + " {0} hp/s".Style(FontColor.cIsHealing) + " ({1} hp/s per stack)".Style(FontColor.cStack) + " for" + " {2}s".Style(FontColor.cIsUtility) + " when gaining a " + "debuff".Style(FontColor.cIsDamage) + ".",
-        RoundVal(Heal_Amount.Value).SignVal(), RoundVal(Heal_Amount.Value * Item_Scale.Value).SignVal(), RoundVal(Duration.Value)
-    );
+    protected override string Description => FuseText([
+        string.Format("Increase base health regeneration ".Style(FontColor.cIsHealing) + "by " + "{0} hp/s ".Style(FontColor.cIsHealing) + "({1} hp/s per stack) ".Style(FontColor.cStack).OptText(Heal_Amount_Stack.Value != 0),
+        RoundVal(Heal_Amount.Value), RoundVal(Heal_Amount_Stack.Value).SignVal()),
+
+        string.Format("for " + "{0}s ".Style(FontColor.cIsUtility) + "({1}s per stack) ".Style(FontColor.cStack).OptText(Duration_Stack.Value != 0) + "when gaining a " + "debuff".Style(FontColor.cIsDamage) + ".",
+        RoundVal(Duration.Value), RoundVal(Duration_Stack.Value).SignVal())
+    ]);
     protected override string PickupText => "Rapidly heal when afflicted with a debuff.";
 
     protected override bool IsEnabled()
@@ -37,27 +42,35 @@ public class GauzePadItem : ItemBase
         Heal_Amount = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
             "Regeneration Amount", 6f,
-            "[ 5 = +5 hp/s | Base Amount Healed, and Increase per Stack ]"
+            "[ 6 = +6 hp/s | Regeneration Amount ]"
         );
-        Item_Scale = SotAPlugin.Instance.Config.Bind(
+        Heal_Amount_Stack = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
-            "Item Scaling", 1f,
-            "[ 1 = 100% | Regeneration per Item Stack based on Regeneration Amount ]"
+            "Regeneration Amount Stack", 6f,
+            "[ 6 = +6 hp/s | Regeneration Amount per Item Stack | 0 to Disable ]"
         );
-        Level_Scale = SotAPlugin.Instance.Config.Bind(
-            DisplayName + " - Item",
-            "Level Scaling", 0.2f,
-            "[ 0.2 = +20% | Increase per Level for Scaling ]"
-        );
+
         Duration = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
             "Effect Duration", 3f,
-            "[ 3 = 3s | Duration on the Regeneration Effect ]"
+            "[ 3 = 3s | Duration for Regeneration ]"
         );
+        Duration_Stack = SotAPlugin.Instance.Config.Bind(
+            DisplayName + " - Item",
+            "Effect Duration Stack", 0f,
+            "[ 1 = +1s | Duration for Regeneration per Item Stack | 0 to Disable ]"
+        );
+
         Item_Enabled = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item", "Enable Item", true,
             "[ True = Enabled | False = Disabled ]"
         );
+
+        Heal_Amount.Value = Mathf.Max(Heal_Amount.Value, 0);
+        Heal_Amount_Stack.Value = Mathf.Max(Heal_Amount_Stack.Value, 0);
+
+        Duration.Value = Mathf.Max(Duration.Value, 0);
+        Duration_Stack.Value = Mathf.Max(Duration_Stack.Value, 0);
 
         return Item_Enabled.Value;
     }

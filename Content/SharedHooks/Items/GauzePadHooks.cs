@@ -50,8 +50,16 @@ public class GauzePadHooks
         int itemCount = self.inventory.GetItemCount(GauzePadItem.ItemDef);
         if (itemCount > 0)
         {
+            float regenDuration = GauzePadItem.Duration.Value;
+
+            if (GauzePadItem.Duration_Stack.Value > 0)
+            {
+                float itemScale = GauzePadItem.Duration_Stack.Value * (itemCount - 1);
+                regenDuration += itemScale;
+            }
+
             EffectManager.SimpleEffect(SplashEffect.prefab, self.corePosition, self.transform.rotation, true);
-            self.ApplyBuff(HealFromDebuff.BuffDef.buffIndex, 1, GauzePadItem.Duration.Value);
+            self.ApplyBuff(HealFromDebuff.BuffDef.buffIndex, 1, regenDuration);
             Util.PlaySound("Play_scav_backpack_open", self.gameObject);
         }
     }
@@ -65,12 +73,24 @@ public class GauzePadHooks
 
             if (hasBuff && itemCount > 0)
             {
+                /*
                 float adjustedLevel     = sender.level - 1f;
                 float scaleMultiplier   = 1f + GauzePadItem.Level_Scale.Value * adjustedLevel;
                 float itemScale         = GauzePadItem.Heal_Amount.Value * GauzePadItem.Item_Scale.Value * (itemCount - 1);
                 float totalRegen        = (GauzePadItem.Heal_Amount.Value + itemScale) * scaleMultiplier;
+                */
 
-                args.baseRegenAdd = totalRegen;
+                float regenAmount   = GauzePadItem.Heal_Amount.Value;
+                float regenLevel    = regenAmount * GauzePadItem.Level_Scale;
+
+                if (GauzePadItem.Heal_Amount_Stack.Value > 0)
+                {
+                    float itemScale = GauzePadItem.Heal_Amount_Stack.Value * (itemCount - 1);
+                    regenAmount += itemScale;
+                }
+
+                args.baseRegenAdd += regenAmount;
+                args.levelRegenAdd += regenLevel;
             }
         }
     }

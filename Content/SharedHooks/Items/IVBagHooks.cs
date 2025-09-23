@@ -1,4 +1,5 @@
 ﻿using RoR2;
+using RoR2.Items;
 using R2API;
 using System;
 using UnityEngine;
@@ -6,9 +7,8 @@ using MonoMod.Cil;
 using Mono.Cecil.Cil;
 using UnityEngine.Networking;
 using UnityEngine.AddressableAssets;
-using RoR2.Items;
-using R2API.Networking.Interfaces;
 using R2API.Networking;
+using R2API.Networking.Interfaces;
 using System.Collections.Generic;
 
 namespace ScalesAsclepius;
@@ -69,7 +69,7 @@ public class IVBagHooks
                 armorAmount += buffScale;
             }
 
-            args.armorAdd = armorAmount;
+            args.armorAdd += armorAmount;
         }
     }
 

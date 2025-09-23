@@ -25,17 +25,15 @@ public class BubbleWrapItem : ItemBase
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("bubbleIconRender");
 
     protected override string DisplayName => "Bubble Wrap";
-    protected override string Description => FuseText(
-        [
-            string.Format("Reduce all " + "debuff ".Style(FontColor.cIsDamage) + "durations by " + "{0} ".Style(FontColor.cIsUtility) + "({1} per stack) ".Style(FontColor.cStack).OptText(Debuff_Reduce_Stack.Value != 0) + "second" + "s".OptText(Debuff_Reduce_Stack.Value != 0 || Debuff_Reduce.Value > 1) + ". ",
-            RoundVal(Debuff_Reduce.Value), RoundVal(Debuff_Reduce_Stack.Value).SignVal()),
+    protected override string Description => FuseText([
+        string.Format("Reduce all " + "debuff ".Style(FontColor.cIsDamage) + "durations by " + "{0} ".Style(FontColor.cIsUtility) + "({1} per stack) ".Style(FontColor.cStack).OptText(Debuff_Reduce_Stack.Value != 0) + "second" + "s".OptText(Debuff_Reduce_Stack.Value != 0 || Debuff_Reduce.Value > 1) + ". ",
+        RoundVal(Debuff_Reduce.Value), RoundVal(Debuff_Reduce_Stack.Value).SignVal()),
 
-            string.Format("Heal ".Style(FontColor.cIsHealing) + "for " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "maximum health ".Style(FontColor.cIsHealing) + "after a " + "debuff ".Style(FontColor.cIsDamage) + "ends. ",
-            RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal()),
+        string.Format("Heal ".Style(FontColor.cIsHealing) + "for " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "maximum health ".Style(FontColor.cIsHealing) + "after a " + "debuff ".Style(FontColor.cIsDamage) + "ends. ",
+        RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal()),
 
-            VoidCorruptText
-        ]
-    );
+        VoidCorruptText
+    ]);
     protected override string PickupText => string.Format(
         "Reduce debuff durations by {0} second" + "s".OptText(Debuff_Reduce.Value > 1) + ". Heal after removing a debuff. " + VoidCorruptText,
         RoundVal(Debuff_Reduce.Value)

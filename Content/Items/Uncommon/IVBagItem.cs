@@ -29,21 +29,19 @@ public class IVBagItem : ItemBase
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("IVBagRender");
 
     protected override string DisplayName => "IV Bag";
-    protected override string Description => FuseText(
-        [
-            string.Format("Tether ".Style(FontColor.cIsHealing) + "to the nearest {0} " + "({1} per stack) ".Style(FontColor.cStack).OptText(Target_Count_Stack.Value != 0) + "allies ".OptText("ally ", Target_Count_Stack.Value != 0 || Target_Count.Value > 1),
-            Target_Count.Value, Target_Count_Stack.Value.SignVal()),
+    protected override string Description => FuseText([
+        string.Format("Tether ".Style(FontColor.cIsHealing) + "to the nearest {0} " + "({1} per stack) ".Style(FontColor.cStack).OptText(Target_Count_Stack.Value != 0) + "allies ".OptText("ally ", Target_Count_Stack.Value != 0 || Target_Count.Value > 1),
+        Target_Count.Value, Target_Count_Stack.Value.SignVal()),
 
-            string.Format("within " + "{0}m".Style(FontColor.cIsUtility) + " ({1}m per stack)".Style(FontColor.cStack).OptText(Radius_Stack.Value != 0) + ", ",
-            RoundVal(Radius.Value), RoundVal(Radius_Stack.Value).SignVal()),
+        string.Format("within " + "{0}m".Style(FontColor.cIsUtility) + " ({1}m per stack)".Style(FontColor.cStack).OptText(Radius_Stack.Value != 0) + ", ",
+        RoundVal(Radius.Value), RoundVal(Radius_Stack.Value).SignVal()),
 
-            string.Format("sharing " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "all healing".Style(FontColor.cIsHealing) + ". ",
-            RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal()),
+        string.Format("sharing " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "all healing".Style(FontColor.cIsHealing) + ". ",
+        RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal()),
 
-            string.Format("Increase armor ".Style(FontColor.cIsHealing) + "by " + "{0} ".Style(FontColor.cIsHealing) + "({1} per stack) ".Style(FontColor.cStack).OptText(Flat_Armor_Stack.Value != 0) + "while " + "untethered".Style(FontColor.cIsHealing) + ".",
-            RoundVal(Flat_Armor.Value), RoundVal(Flat_Armor_Stack.Value).SignVal())
-        ]
-    );
+        string.Format("Increase armor ".Style(FontColor.cIsHealing) + "by " + "{0} ".Style(FontColor.cIsHealing) + "({1} per stack) ".Style(FontColor.cStack).OptText(Flat_Armor_Stack.Value != 0) + "while " + "untethered".Style(FontColor.cIsHealing) + ".",
+        RoundVal(Flat_Armor.Value), RoundVal(Flat_Armor_Stack.Value).SignVal())
+    ]);
     protected override string PickupText => "Tether to " + "a nearby ally".OptText("nearby allies", Target_Count.Value > 1) + ", share health and gaining armor." ;
 
     protected override bool IsEnabled()
