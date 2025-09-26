@@ -14,7 +14,7 @@ public class BubbleWrapItem : ItemBase
     public static ConfigEntry<float> Debuff_Reduce;
     public static ConfigEntry<float> Debuff_Reduce_Stack;
 
-    private static string VoidCorruptText = "Corrupts all Gauze Pads".Style(FontColor.cIsVoid) + ".";
+    private static readonly string VoidCorruptText = "Corrupts all Gauze Pads".Style(FontColor.cIsVoid) + ".";
 
     protected override string Name => "BubbleWrap";
     public static ItemDef ItemDef;

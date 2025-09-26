@@ -1,13 +1,13 @@
 ﻿using BepInEx;
-using R2API;
-using System;
 using System.IO;
-using UnityEngine;
-using UnityEngine.AddressableAssets;
-using RoR2.ExpansionManagement;
+using R2API;
 using R2API.Networking;
 using ShaderSwapper;
 using RoR2;
+using RoR2.ExpansionManagement;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+using RoR2BepInExPack.GameAssetPathsBetter;
 
 [assembly: HG.Reflection.SearchableAttribute.OptIn]
 
@@ -62,7 +62,7 @@ namespace ScalesAsclepius
             ScalesAsclepiusExp.name = "scaleAsclepiusIcon";
 
             ScalesAsclepiusExp.iconSprite = Bundle.LoadAsset<Sprite>("expansionIcon");
-            ScalesAsclepiusExp.disabledIconSprite = Addressables.LoadAssetAsync<Sprite>("RoR2/Base/Common/MiscIcons/texUnlockIcon.png").WaitForCompletion();
+            ScalesAsclepiusExp.disabledIconSprite = Addressables.LoadAssetAsync<Sprite>(RoR2_Base_Common_MiscIcons.texUnlockIcon_png).WaitForCompletion();
 
             ScalesAsclepiusExp.nameToken = SALanguage.LanguageAdd("EXPANSION_ICON", expansionName);
             ScalesAsclepiusExp.descriptionToken = SALanguage.LanguageAdd("EXPANSION_DESC", expansionDescription);
@@ -74,12 +74,17 @@ namespace ScalesAsclepius
             VoidRelationship = ScriptableObject.CreateInstance<ItemRelationshipProvider>();
             VoidRelationship.name = "SotAVoidItemProvider";
 
-            VoidRelationship.relationshipType = Addressables.LoadAssetAsync<ItemRelationshipType>("RoR2/DLC1/Common/ContagiousItem.asset").WaitForCompletion();
+            VoidRelationship.relationshipType = Addressables.LoadAssetAsync<ItemRelationshipType>(RoR2_DLC1_Common.ContagiousItem_asset).WaitForCompletion();
             VoidRelationship.relationships = [
                 new ItemDef.Pair
                 {
                     itemDef1 = GauzePadItem.ItemDef,
                     itemDef2 = BubbleWrapItem.ItemDef
+                },
+                new ItemDef.Pair
+                {
+                    itemDef1 = IVBagItem.ItemDef,
+                    itemDef2 = JellyBagItem.ItemDef
                 }
             ];
 
@@ -89,6 +94,7 @@ namespace ScalesAsclepius
         {
             new HealFromDebuff();
             new TetherArmorBuff();
+            new JellyCooldownBuff();
         }
         private void CreateItems()
         {
@@ -105,6 +111,12 @@ namespace ScalesAsclepius
             new BubbleWrapHooks();
 
             // Void Uncommon Tier Items
+            new JellyBagItem();
+            new JellyBagHooks();
+
+            // Legendary Tier Items
+            new HabitatChartItem();
+            new HabitatChartHooks();
         }
 
         private void SetUpAssets()

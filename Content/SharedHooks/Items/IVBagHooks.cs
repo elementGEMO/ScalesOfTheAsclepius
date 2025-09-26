@@ -5,11 +5,12 @@ using System;
 using UnityEngine;
 using MonoMod.Cil;
 using Mono.Cecil.Cil;
+using System.Collections.Generic;
 using UnityEngine.Networking;
 using UnityEngine.AddressableAssets;
 using R2API.Networking;
 using R2API.Networking.Interfaces;
-using System.Collections.Generic;
+using RoR2BepInExPack.GameAssetPathsBetter;
 
 namespace ScalesAsclepius;
 public class IVBagHooks
@@ -36,7 +37,7 @@ public class IVBagHooks
 
     private void CreateTether()
     {
-        TetherPrefab = Addressables.LoadAssetAsync<GameObject>("RoR2/DLC1/EliteEarth/AffixEarthTetherVFX.prefab").WaitForCompletion().InstantiateClone("IVBagTether", true);
+        TetherPrefab = Addressables.LoadAssetAsync<GameObject>(RoR2_DLC1_EliteEarth.AffixEarthTetherVFX_prefab).WaitForCompletion().InstantiateClone("IVBagTether", true);
 
         LineRenderer disableLine = TetherPrefab.GetComponent<LineRenderer>();
         Material disableMat = new(disableLine.sharedMaterial);

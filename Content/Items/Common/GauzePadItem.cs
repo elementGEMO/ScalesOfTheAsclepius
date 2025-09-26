@@ -111,7 +111,6 @@ public class GauzePadItem : ItemBase
             localPos = new Vector3(0.09018F, 0.33654F, 0.08826F),
             localAngles = new Vector3(359.2535F, 256.1467F, 31.56238F),
             localScale = new Vector3(0.25F, 0.25F, 0.25F)
-
         });
 
         return baseDisplay;

@@ -3,13 +3,13 @@ using R2API;
 using System;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using RoR2BepInExPack.GameAssetPathsBetter;
 
 namespace ScalesAsclepius;
 public class BubbleWrapHooks
 {
     //private static readonly string InternalName = "BubbleWrapHooks";
     public static bool ItemEnabled;
-
     private static EffectDef BounceEffect;
 
     public BubbleWrapHooks()
@@ -27,9 +27,9 @@ public class BubbleWrapHooks
     }
     private static void CreateBubbleEffect()
     {
-        GameObject tempPrefab   = Addressables.LoadAsset<GameObject>("RoR2/DLC1/BearVoid/BearVoidProc.prefab").WaitForCompletion().InstantiateClone("BubbleWrapProc");
+        GameObject tempPrefab   = Addressables.LoadAsset<GameObject>(RoR2_DLC1_BearVoid.BearVoidProc_prefab).WaitForCompletion().InstantiateClone("BubbleWrapProc");
         EffectComponent effect  = tempPrefab.GetComponent<EffectComponent>();
-        GameObject textRemoval  = tempPrefab.transform.FindChild("TextCamScaler").gameObject;
+        GameObject textRemoval  = tempPrefab.transform.Find("TextCamScaler").gameObject;
 
         effect.soundName = "";
         UnityEngine.Object.Destroy(textRemoval);

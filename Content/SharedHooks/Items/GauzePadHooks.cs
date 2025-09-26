@@ -4,7 +4,7 @@ using System;
 using R2API.Networking;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.Networking;
+using RoR2BepInExPack.GameAssetPathsBetter;
 
 namespace ScalesAsclepius;
 public class GauzePadHooks
@@ -30,7 +30,7 @@ public class GauzePadHooks
 
     private void CreateSplashEffect()
     {
-        GameObject tempPrefab = Addressables.LoadAsset<GameObject>("RoR2/Base/Phasing/ProcStealthkit.prefab").WaitForCompletion().InstantiateClone("GauzePadProc");
+        GameObject tempPrefab = Addressables.LoadAsset<GameObject>(RoR2_Base_Phasing.ProcStealthkit_prefab).WaitForCompletion().InstantiateClone("GauzePadProc");
         EffectComponent effect = tempPrefab.GetComponent<EffectComponent>();
 
         foreach (Transform transform in tempPrefab.GetComponentsInChildren<Transform>()) transform.localScale = Vector3.one * 0.5f;
@@ -73,13 +73,6 @@ public class GauzePadHooks
 
             if (hasBuff && itemCount > 0)
             {
-                /*
-                float adjustedLevel     = sender.level - 1f;
-                float scaleMultiplier   = 1f + GauzePadItem.Level_Scale.Value * adjustedLevel;
-                float itemScale         = GauzePadItem.Heal_Amount.Value * GauzePadItem.Item_Scale.Value * (itemCount - 1);
-                float totalRegen        = (GauzePadItem.Heal_Amount.Value + itemScale) * scaleMultiplier;
-                */
-
                 float regenAmount   = GauzePadItem.Heal_Amount.Value;
                 float regenLevel    = regenAmount * GauzePadItem.Level_Scale;
 
