@@ -93,8 +93,6 @@ namespace ScalesAsclepius
         private void CreateBuffs()
         {
             new HealFromDebuff();
-            new TetherArmorBuff();
-            new JellyCooldownBuff();
         }
         private void CreateItems()
         {
@@ -116,6 +114,7 @@ namespace ScalesAsclepius
 
             // Legendary Tier Items
             new HabitatChartItem();
+            new HabitatChartCountItem();
             new HabitatChartHooks();
         }
 

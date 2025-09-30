@@ -1,6 +1,7 @@
 ﻿using R2API;
 using RoR2;
 using RoR2.Orbs;
+using RoR2.Items;
 using MonoMod.Cil;
 using Mono.Cecil.Cil;
 using UnityEngine;
@@ -9,6 +10,11 @@ using System.Collections.Generic;
 using UnityEngine.AddressableAssets;
 using RoR2BepInExPack.GameAssetPathsBetter;
 using System;
+using R2API.Networking.Interfaces;
+using static UnityEngine.UI.GridLayoutGroup;
+using HG;
+using static ak.wwise;
+using R2API.Networking;
 
 namespace ScalesAsclepius;
 public class JellyBagHooks
@@ -17,6 +23,7 @@ public class JellyBagHooks
     public static bool ItemEnabled;
     public static EffectDef OrbEffect;
     public static EffectDef HitEffect;
+    public static GameObject RadiusEffect;
 
     public JellyBagHooks()
     {
@@ -26,57 +33,24 @@ public class JellyBagHooks
         {
             CreateOrbEffect();
             CreateHitEffect();
+            CreateRadiusEffect();
 
             GlobalEventManager.onServerDamageDealt += GlobalEventManager_onServerDamageDealt;
-            IL.RoR2.HealthComponent.TakeDamageProcess += HealthComponent_TakeDamageProcess;
+            Inventory.onInventoryChangedGlobal += Inventory_onInventoryChangedGlobal;
+            NetworkingAPI.RegisterMessageType<JellyBagIndicator.JellyBagIndicatorSync>();
         }
     }
 
-    private void HealthComponent_TakeDamageProcess(ILContext il)
+    private void Inventory_onInventoryChangedGlobal(Inventory inventory)
     {
-        ILCursor cursor = new(il);
-        int itemIndex = -1;
+        CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
+        CharacterBody body = charMaster ? charMaster.GetBody() : null;
 
-        if (cursor.TryGotoNext(
-            x => x.MatchLdloc(out _),
-            x => x.MatchLdfld(out var displayClass) && displayClass.Name == "damageInfo",
-            x => x.MatchLdfld(typeof(DamageInfo), nameof(DamageInfo.damage)),
-            x => x.MatchStloc(out itemIndex)
-        ))
+        if (body)
         {
-            if (itemIndex != -1 && cursor.TryGotoNext(
-                x => x.MatchLdflda(typeof(HealthComponent), nameof(HealthComponent.itemCounts)),
-                x => x.MatchLdfld(typeof(HealthComponent.ItemCounts), nameof(HealthComponent.ItemCounts.parentEgg)),
-                x => x.MatchLdcI4(out _),
-                x => x.MatchBle(out _)
-            ))
-            {
-                cursor.Emit(OpCodes.Ldarg, 0);
-                cursor.Emit(OpCodes.Ldloc, itemIndex);
-                cursor.EmitDelegate(DamageReduceEffect);
-                cursor.Emit(OpCodes.Stloc, itemIndex);
-            }
-            else Log.Error("Couldn't Hook - JellyBag! - 2");
+            int itemCount = inventory.GetItemCount(JellyBagItem.ItemDef);
+            if (itemCount > 0) new JellyBagIndicator.JellyBagIndicatorSync(body.netId).Send(NetworkDestination.Clients);
         }
-        else Log.Error("Couldn't Hook - JellyBag! - 1");
-    }
-    private static float DamageReduceEffect(HealthComponent self, float damage)
-    {
-        CharacterBody body = self.body;
-
-        if (body?.inventory)
-        {
-            int itemCount   = body.inventory.GetItemCount(JellyBagItem.ItemDef);
-            bool hasBuff    = body.HasBuff(JellyCooldownBuff.BuffDef);
-
-            if (!hasBuff && itemCount > 0)
-            {
-                damage = Math.Max(1f, damage - 50f * itemCount);
-                for (int i = 0; i < 10; i++) body.AddTimedBuff(JellyCooldownBuff.BuffDef, i + 1);
-            }
-        }
-
-        return damage;
     }
 
     private void CreateOrbEffect()
@@ -152,61 +126,80 @@ public class JellyBagHooks
         ContentAddition.AddEffect(HitEffect.prefab);
     }
 
+    private void CreateRadiusEffect()
+    {
+        GameObject tempPrefab   = Addressables.LoadAssetAsync<GameObject>(RoR2_Base_NearbyDamageBonus.NearbyDamageBonusIndicator_prefab).WaitForCompletion().InstantiateClone("JellyBagIndicator");
+        MeshRenderer sphere     = tempPrefab.transform.Find("Radius, Spherical").GetComponent<MeshRenderer>();
+        Material sphereMat      = new(sphere.sharedMaterial);
+
+        sphereMat.SetColor("_TintColor", new Color(0.357f, 0f, 0.957f, 1f));
+        sphere.sharedMaterial = sphereMat;
+
+        RadiusEffect = tempPrefab;
+    }
+
     private void GlobalEventManager_onServerDamageDealt(DamageReport damageReport)
     {
         CharacterBody hurtBody      = damageReport.victimBody;
         HealthComponent hurtHealth  = hurtBody?.GetComponent<HealthComponent>();
         TeamIndex bodyTeam          = damageReport.victimTeamIndex;
 
-        if (hurtHealth && damageReport.damageDealt / hurtHealth.fullCombinedHealth >= 0.05f)
+        if (!hurtHealth) return;
+
+        if (Util.GetItemCountForTeam(bodyTeam, JellyBagItem.ItemDef.itemIndex, true) > 0)
         {
-            if (Util.GetItemCountForTeam(bodyTeam, JellyBagItem.ItemDef.itemIndex, true) > 0)
+            float damagePercent             = damageReport.damageDealt / hurtHealth.fullCombinedHealth;
+            var allyListReadOnly            = TeamComponent.GetTeamMembers(bodyTeam);
+            List<CharacterBody> itemHolders = [];
+
+            foreach (TeamComponent team in allyListReadOnly)
             {
-                List<CharacterBody> itemHolders = [];
-                List<HurtBox> hurtBoxList       = HG.CollectionPool<HurtBox, List<HurtBox>>.RentCollection();
-                TeamMask allyMask               = TeamMask.none; allyMask.AddTeam(bodyTeam);
+                CharacterBody ally = team.body;
+                int itemCount = ally.inventory ? ally.inventory.GetItemCount(JellyBagItem.ItemDef) : 0;
 
-                /*
-                float radius = IVBagItem.Radius.Value;
+                if (ally == hurtBody) continue;
+                if (!ally.inventory) continue;
+                if (itemCount == 0) continue;
+                
+                itemHolders.Add(ally);
+            }
 
-                if (IVBagItem.Radius_Stack.Value > 0)
+            foreach (CharacterBody ally in itemHolders)
+            {
+                if (!ally.inventory) continue;
+
+                float delta     = (hurtBody.transform.position - ally.transform.position).sqrMagnitude;
+                int itemCount   = ally.inventory.GetItemCount(JellyBagItem.ItemDef);
+                float radius    = JellyBagItem.Radius.Value;
+                float threshold = JellyBagItem.Threshold.Value / 100f;
+
+                if (JellyBagItem.Threshold_Stack.Value < 0)
                 {
-                    float itemScale = IVBagItem.Radius_Stack.Value * (itemCount - 1);
+                    float itemScale = Mathf.Pow(1f + JellyBagItem.Threshold_Stack.Value / 100f, itemCount - 1);
+                    threshold *= itemScale;
+                }
+
+                if (JellyBagItem.Radius_Stack.Value > 0)
+                {
+                    float itemScale = JellyBagItem.Radius_Stack.Value * (itemCount - 1);
                     radius += itemScale;
                 }
-                */
 
-                SphereSearch radiusSearch = new()
+                if (damagePercent >= threshold && delta <= Math.Pow(radius, 2))
                 {
-                    radius = 30,
-                    origin = hurtBody.transform.position,
-                    mask = LayerIndex.entityPrecise.mask,
-                    queryTriggerInteraction = QueryTriggerInteraction.UseGlobal
-                };
+                    float healPercent = JellyBagItem.Heal_Percent.Value;
 
-                radiusSearch.RefreshCandidates();
-                radiusSearch.FilterCandidatesByHurtBoxTeam(allyMask);
-                radiusSearch.OrderCandidatesByDistance();
-                radiusSearch.FilterCandidatesByDistinctHurtBoxEntities();
-                radiusSearch.GetHurtBoxes(hurtBoxList);
-
-                int currentIndex = 0;
-
-                while (currentIndex < hurtBoxList.Count)
-                {
-                    CharacterBody currentAlly = hurtBoxList[currentIndex]?.healthComponent.body;
-                    if (currentAlly != hurtBody && currentAlly.inventory?.GetItemCount(JellyBagItem.ItemDef) > 0) itemHolders.Add(currentAlly);
-                    currentIndex++;
-                }
-
-                foreach (CharacterBody itemBody in itemHolders)
-                {
-                    if (!itemBody) continue;
+                    if (JellyBagItem.Heal_Percent_Stack.Value > 0)
+                    {
+                        float itemScale = JellyBagItem.Heal_Percent_Stack.Value * (itemCount - 1);
+                        healPercent += itemScale;
+                    }
 
                     OrbManager.instance.AddOrb(new JellyBagOrb()
                     {
                         origin = hurtBody.corePosition,
-                        target = itemBody.mainHurtBox
+                        target = ally.mainHurtBox,
+                        healAmount = damageReport.damageDealt * healPercent / 100f
                     });
                 }
             }
@@ -214,9 +207,158 @@ public class JellyBagHooks
     }
 }
 
+public class JellyBagIndicator : BaseItemBodyBehavior
+{
+    private GameObject RadiusPrefab;
+
+    [ItemDefAssociation(useOnServer = true, useOnClient = true)]
+    public static ItemDef GetItemDef() => JellyBagItem.Item_Enabled.Value ? JellyBagItem.ItemDef : null;
+
+    public void OnEnable()
+    {
+        Inventory.onInventoryChangedGlobal += UpdateRadius;
+    }
+    public void OnDisable()
+    {
+        Inventory.onInventoryChangedGlobal -= UpdateRadius;
+        CreateRadius(false, gameObject);
+    }
+    public void UpdateRadius(Inventory inventory)
+    {
+        CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
+        CharacterBody body = charMaster ? charMaster.GetBody() : null;
+
+        if (body && body == this.body)
+        {
+            int itemCount = inventory.GetItemCount(JellyBagItem.ItemDef);
+
+            if (itemCount > 0 && RadiusPrefab)
+            {
+                Transform radiusVisual  = RadiusPrefab.transform.Find("Radius, Spherical");
+                float radius            = JellyBagItem.Radius.Value;
+                float itemScale         = JellyBagItem.Radius_Stack.Value * (itemCount - 1);
+
+                if (radiusVisual) radiusVisual.localScale = Vector3.one * (radius + itemScale) * 2;
+            }
+        }
+    }
+
+    public void CreateRadius(bool isActive, GameObject body)
+    {
+        if (!RadiusPrefab && isActive)
+        {
+            RadiusPrefab = Instantiate(JellyBagHooks.RadiusEffect, body.GetComponent<CharacterBody>().corePosition, Quaternion.identity);
+            RadiusPrefab.GetComponent<NetworkedBodyAttachment>().AttachToGameObjectAndSpawn(body, null);
+        } else if (RadiusPrefab && !isActive)
+        {
+            Destroy(RadiusPrefab);
+            RadiusPrefab = null;
+        }
+    }
+
+    public class JellyBagIndicatorSync : INetMessage
+    {
+        NetworkInstanceId NetID;
+        public JellyBagIndicatorSync() { }
+        public JellyBagIndicatorSync(NetworkInstanceId setID) => NetID = setID;
+        public void Deserialize(NetworkReader reader) => NetID = reader.ReadNetworkId();
+
+        public void OnReceived()
+        {
+            GameObject bodyObject = Util.FindNetworkObject(NetID);
+            Inventory inventory = bodyObject?.GetComponent<CharacterBody>().inventory;
+            JellyBagIndicator behavior = bodyObject?.GetComponent<JellyBagIndicator>();
+
+            if (behavior) behavior.CreateRadius(true, bodyObject);
+            if (inventory && behavior) behavior.UpdateRadius(inventory);
+        }
+
+        public void Serialize(NetworkWriter writer) => writer.Write(NetID);
+    }
+
+    /*
+    private GameObject RadiusObject;
+    private bool ToggleVisual
+    {
+        get { return RadiusObject; }
+        set
+        {
+            if (ToggleVisual == value) return;
+            RadiusObject = CreateRadius(value);
+        }
+    }
+
+    [ItemDefAssociation(useOnServer = true, useOnClient = true)]
+    public static ItemDef GetItemDef() => JellyBagItem.Item_Enabled.Value ? JellyBagItem.ItemDef : null;
+
+    public void OnEnable()
+    {
+        ToggleVisual = true;
+        Inventory.onInventoryChangedGlobal += UpdateRadius;
+    }
+    public void OnDisable()
+    {
+        ToggleVisual = false;
+        Inventory.onInventoryChangedGlobal -= UpdateRadius;
+    }
+
+    public void UpdateRadius(Inventory inventory)
+    {
+        CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
+        CharacterBody body = charMaster ? charMaster.GetBody() : null;
+
+        if (body && body == this.body)
+        {
+            int itemCount = inventory.GetItemCount(JellyBagItem.ItemDef);
+
+            if (itemCount > 0)
+            {
+                float radius = JellyBagItem.Radius.Value;
+                float itemScale = JellyBagItem.Radius_Stack.Value * (itemCount - 1);
+
+                if (RadiusObject)
+                {
+                    Transform radiusVisual = RadiusObject.transform.Find("Radius, Spherical");
+                    if (radiusVisual) radiusVisual.localScale = Vector3.one * (radius + itemScale) * 2;
+                }
+            }
+        }
+    }
+    public GameObject CreateRadius(bool enabled)
+    {
+        if (enabled)
+        {
+            GameObject radius = Instantiate(JellyBagHooks.RadiusEffect, body.corePosition, Quaternion.identity);
+            radius.GetComponent<NetworkedBodyAttachment>().AttachToGameObjectAndSpawn(gameObject, null);
+
+            return radius;
+        }
+
+        Destroy(RadiusObject);
+        return null;
+
+        /*
+        GameObject radius = Instantiate(JellyBagHooks.RadiusEffect, body.corePosition, Quaternion.identity);
+        radius.GetComponent<NetworkedBodyAttachment>().AttachToGameObjectAndSpawn(gameObject, null);
+
+        return radius;
+
+        if (value)
+        {
+            RadiusObject = CreateRadius();
+
+            return;
+        }
+
+        Destroy(RadiusObject);
+        RadiusObject = null;
+        */
+}
+
 public class JellyBagOrb : Orb
 {
-    private static readonly float Speed = 20f;
+    private static readonly float Speed = 30f;
+    public float healAmount;
     public override void Begin()
     {
         duration = distanceToTarget / Speed;
@@ -225,7 +367,7 @@ public class JellyBagOrb : Orb
         {
             origin = origin,
             genericFloat = duration,
-            scale = 2f
+            scale = 1.75f
         };
 
         setEffect.SetHurtBoxReference(target);
@@ -240,10 +382,8 @@ public class JellyBagOrb : Orb
 
         if (targetBody?.inventory)
         {
-            int itemCount = targetBody.inventory.GetItemCount(JellyBagItem.ItemDef);
-            float percentHeal = targetHealth.combinedHealth * 0.05f * itemCount;
-
-            targetHealth.Heal(25 + percentHeal, new ProcChainMask());
+            targetHealth.Heal(healAmount, new ProcChainMask());
+            Util.PlaySound("Play_UI_arenaMode_voidCollapse_select", targetBody.gameObject);
             EffectManager.SpawnEffect(JellyBagHooks.HitEffect.prefab, new EffectData
             {
                 rootObject = targetBody.gameObject,

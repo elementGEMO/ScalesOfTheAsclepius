@@ -29,7 +29,6 @@ public class IVBagHooks
             CreateTether();
 
             NetworkingAPI.RegisterMessageType<IVBagTether.IVTetherSync>();
-            RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
             IL.RoR2.HealthComponent.Heal += HealthComponent_Heal1;
             HealShare = ProcTypeAPI.ReserveProcType();
         }
@@ -54,24 +53,6 @@ public class IVBagHooks
 
         healMat.SetColor("_TintColor", new Color(0, 0, 0));
         healSpot.sharedMaterial = healMat;
-    }
-
-    private void RecalculateStatsAPI_GetStatCoefficients(CharacterBody sender, RecalculateStatsAPI.StatHookEventArgs args)
-    {
-        if (sender && sender.HasBuff(TetherArmorBuff.BuffDef))
-        {
-            float armorAmount = IVBagItem.Flat_Armor.Value;
-
-            if (IVBagItem.Flat_Armor_Stack.Value > 0)
-            {
-                int buffCount = sender.GetBuffCount(TetherArmorBuff.BuffDef);
-                float buffScale = IVBagItem.Flat_Armor_Stack.Value * (buffCount - 1);
-
-                armorAmount += buffScale;
-            }
-
-            args.armorAdd += armorAmount;
-        }
     }
 
     private void HealthComponent_Heal1(ILContext il)
@@ -155,8 +136,6 @@ public class IVBagTether : BaseItemBodyBehavior
     public static ItemDef GetItemDef() => (IVBagItem.Item_Enabled.Value) ? IVBagItem.ItemDef : null;
     public void OnEnable()
     {
-        if (!IVBagItem.Item_Enabled.Value) return;
-
         Owner = GetComponent<CharacterBody>();
         TetherEffect = gameObject.AddComponent<TetherVfxOrigin>();
         TetherEffect.tetherPrefab = IVBagHooks.TetherPrefab;
@@ -249,12 +228,6 @@ public class IVBagTether : BaseItemBodyBehavior
             CharacterBody currentAlly = hurtBoxList[currentIndex]?.healthComponent.body;
             if (currentAlly != Owner) TargetLinks.Add(currentAlly.transform);
             currentIndex++;
-        }
-
-        if (NetworkServer.active)
-        {
-            if (TargetLinks.Count <= 0 && Owner.GetBuffCount(TetherArmorBuff.BuffDef) != itemCount) Owner.SetBuffCount(TetherArmorBuff.BuffDef.buffIndex, itemCount);
-            else if (TargetLinks.Count > 0 && Owner.HasBuff(TetherArmorBuff.BuffDef)) Owner.SetBuffCount(TetherArmorBuff.BuffDef.buffIndex, 0);
         }
     }
     public void LateUpdate()

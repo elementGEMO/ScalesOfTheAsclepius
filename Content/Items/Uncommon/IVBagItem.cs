@@ -14,8 +14,6 @@ public class IVBagItem : ItemBase
     public static ConfigEntry<int> Target_Count_Stack;
     public static ConfigEntry<float> Heal_Percent;
     public static ConfigEntry<float> Heal_Percent_Stack;
-    public static ConfigEntry<float> Flat_Armor;
-    public static ConfigEntry<float> Flat_Armor_Stack;
     public static ConfigEntry<float> Radius;
     public static ConfigEntry<float> Radius_Stack;
 
@@ -36,11 +34,8 @@ public class IVBagItem : ItemBase
         string.Format("within " + "{0}m".Style(FontColor.cIsUtility) + " ({1}m per stack)".Style(FontColor.cStack).OptText(Radius_Stack.Value != 0) + ", ",
         RoundVal(Radius.Value), RoundVal(Radius_Stack.Value).SignVal()),
 
-        string.Format("sharing " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "all healing".Style(FontColor.cIsHealing) + ". ",
-        RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal()),
-
-        string.Format("Increase armor ".Style(FontColor.cIsHealing) + "by " + "{0} ".Style(FontColor.cIsHealing) + "({1} per stack) ".Style(FontColor.cStack).OptText(Flat_Armor_Stack.Value != 0) + "while " + "untethered".Style(FontColor.cIsHealing) + ".",
-        RoundVal(Flat_Armor.Value), RoundVal(Flat_Armor_Stack.Value).SignVal())
+        string.Format("sharing " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "all healing".Style(FontColor.cIsHealing) + ".",
+        RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal())
     ]);
     protected override string PickupText => "Tether to " + "a nearby ally".OptText("nearby allies", Target_Count.Value > 1) + ", share health and gaining armor." ;
 
@@ -68,17 +63,6 @@ public class IVBagItem : ItemBase
             "[ 50 = +50% | Healing Shared per Item Stack | 0 to Disable ]"
         );
 
-        Flat_Armor = SotAPlugin.Instance.Config.Bind(
-            DisplayName + " - Item",
-            "Armor Gain", 25f,
-            "[ 25 = 25 | Armor Gained ]"
-        );
-        Flat_Armor_Stack = SotAPlugin.Instance.Config.Bind(
-            DisplayName + " - Item",
-            "Armor Gain Stack", 10f,
-            "[ 10 = +10 | Armor Gained per Item Stack | 0 to Disable ]"
-        );
-
         Radius = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
             "Radius", 30f,
@@ -100,9 +84,6 @@ public class IVBagItem : ItemBase
 
         Heal_Percent.Value = Mathf.Max(Heal_Percent.Value, 0);
         Heal_Percent_Stack.Value = Mathf.Max(Heal_Percent_Stack.Value, 0);
-
-        Flat_Armor.Value = Mathf.Max(Flat_Armor.Value, 0);
-        Flat_Armor_Stack.Value = Mathf.Max(Flat_Armor_Stack.Value, 0);
 
         Radius.Value = Mathf.Max(Radius.Value, 0);
         Radius_Stack.Value = Mathf.Max(Radius_Stack.Value, 0);
