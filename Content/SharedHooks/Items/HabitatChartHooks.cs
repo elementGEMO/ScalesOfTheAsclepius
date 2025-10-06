@@ -38,8 +38,37 @@ public class HabitatChartHooks
 
         if (body)
         {
-            int itemCount = inventory.GetItemCount(HabitatChartItem.ItemDef);
+            int itemCount   = inventory.GetItemCount(HabitatChartItem.ItemDef);
             int effectCount = inventory.GetItemCount(HabitatChartCountItem.ItemDef);
+
+            float maxHealth     = HabitatChartItem.Health_Max.Value;
+            float expectHealth  = HabitatChartItem.Health_Gain.Value;
+
+            if (HabitatChartItem.Health_Max_Stack.Value > 0)
+            {
+                float itemScale = HabitatChartItem.Health_Max_Stack.Value + (itemCount - 1);
+                maxHealth += itemScale;
+            }
+
+            if (HabitatChartItem.Health_Gain_Stack.Value > 0)
+            {
+                float effectScale = HabitatChartItem.Health_Gain_Stack.Value + (effectCount - 1);
+                expectHealth += effectScale;
+            }
+
+            while (maxHealth < expectHealth)
+            {
+                inventory.RemoveItem(HabitatChartCountItem.ItemDef);
+
+                effectCount     = inventory.GetItemCount(HabitatChartCountItem.ItemDef);
+                expectHealth    = HabitatChartItem.Health_Gain.Value;
+
+                if (HabitatChartItem.Health_Gain_Stack.Value > 0)
+                {
+                    float effectScale = HabitatChartItem.Health_Gain_Stack.Value + (effectCount - 1);
+                    expectHealth += effectScale;
+                }
+            }
         }
     }
 
@@ -60,8 +89,15 @@ public class HabitatChartHooks
             
             if (itemCount > 0)
             {
-                float undecidedHealth = 1000f;
-                args.baseHealthAdd += undecidedHealth * itemCount;
+                float permaHealth = HabitatChartItem.Health_Gain.Value;
+
+                if (HabitatChartItem.Health_Gain_Stack.Value > 0)
+                {
+                    float itemScale = HabitatChartItem.Health_Gain_Stack.Value * (itemCount - 1);
+                    permaHealth += itemScale;
+                }
+
+                args.baseHealthAdd += permaHealth;
             }
         }
     }

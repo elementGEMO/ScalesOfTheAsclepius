@@ -36,11 +36,12 @@ public class JellyBagHooks
             CreateRadiusEffect();
 
             GlobalEventManager.onServerDamageDealt += GlobalEventManager_onServerDamageDealt;
-            Inventory.onInventoryChangedGlobal += Inventory_onInventoryChangedGlobal;
-            NetworkingAPI.RegisterMessageType<JellyBagIndicator.JellyBagIndicatorSync>();
+            //Inventory.onInventoryChangedGlobal += Inventory_onInventoryChangedGlobal;
+            //NetworkingAPI.RegisterMessageType<JellyBagIndicator.JellyBagIndicatorSync>();
         }
     }
 
+    /*
     private void Inventory_onInventoryChangedGlobal(Inventory inventory)
     {
         CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
@@ -52,6 +53,7 @@ public class JellyBagHooks
             if (itemCount > 0) new JellyBagIndicator.JellyBagIndicatorSync(body.netId).Send(NetworkDestination.Clients);
         }
     }
+    */
 
     private void CreateOrbEffect()
     {
@@ -135,6 +137,9 @@ public class JellyBagHooks
         sphereMat.SetColor("_TintColor", new Color(0.357f, 0f, 0.957f, 1f));
         sphere.sharedMaterial = sphereMat;
 
+        UnityEngine.Object.Destroy(tempPrefab.GetComponent<NetworkedBodyAttachment>());
+        tempPrefab.AddComponent<NetworkParent>();
+
         RadiusEffect = tempPrefab;
     }
 
@@ -210,20 +215,24 @@ public class JellyBagHooks
 public class JellyBagIndicator : BaseItemBodyBehavior
 {
     private GameObject RadiusPrefab;
+    private GameObject SphereIndicator;
 
     [ItemDefAssociation(useOnServer = true, useOnClient = true)]
     public static ItemDef GetItemDef() => JellyBagItem.Item_Enabled.Value ? JellyBagItem.ItemDef : null;
 
     public void OnEnable()
     {
-        Inventory.onInventoryChangedGlobal += UpdateRadius;
+        Inventory.onInventoryChangedGlobal += UpdateVisual;
+        body.OnNetworkItemBehaviorUpdate += HandleNetworkItemBehaviorUpdate;
     }
     public void OnDisable()
     {
-        Inventory.onInventoryChangedGlobal -= UpdateRadius;
-        CreateRadius(false, gameObject);
+        Inventory.onInventoryChangedGlobal -= UpdateVisual;
+        body.OnNetworkItemBehaviorUpdate -= HandleNetworkItemBehaviorUpdate;
+        SetPrefab(false);
     }
-    public void UpdateRadius(Inventory inventory)
+
+    private void UpdateVisual(Inventory inventory)
     {
         CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
         CharacterBody body = charMaster ? charMaster.GetBody() : null;
@@ -231,128 +240,48 @@ public class JellyBagIndicator : BaseItemBodyBehavior
         if (body && body == this.body)
         {
             int itemCount = inventory.GetItemCount(JellyBagItem.ItemDef);
-
-            if (itemCount > 0 && RadiusPrefab)
-            {
-                Transform radiusVisual  = RadiusPrefab.transform.Find("Radius, Spherical");
-                float radius            = JellyBagItem.Radius.Value;
-                float itemScale         = JellyBagItem.Radius_Stack.Value * (itemCount - 1);
-
-                if (radiusVisual) radiusVisual.localScale = Vector3.one * (radius + itemScale) * 2;
-            }
-        }
-    }
-
-    public void CreateRadius(bool isActive, GameObject body)
-    {
-        if (!RadiusPrefab && isActive)
-        {
-            RadiusPrefab = Instantiate(JellyBagHooks.RadiusEffect, body.GetComponent<CharacterBody>().corePosition, Quaternion.identity);
-            RadiusPrefab.GetComponent<NetworkedBodyAttachment>().AttachToGameObjectAndSpawn(body, null);
-        } else if (RadiusPrefab && !isActive)
-        {
-            Destroy(RadiusPrefab);
-            RadiusPrefab = null;
-        }
-    }
-
-    public class JellyBagIndicatorSync : INetMessage
-    {
-        NetworkInstanceId NetID;
-        public JellyBagIndicatorSync() { }
-        public JellyBagIndicatorSync(NetworkInstanceId setID) => NetID = setID;
-        public void Deserialize(NetworkReader reader) => NetID = reader.ReadNetworkId();
-
-        public void OnReceived()
-        {
-            GameObject bodyObject = Util.FindNetworkObject(NetID);
-            Inventory inventory = bodyObject?.GetComponent<CharacterBody>().inventory;
-            JellyBagIndicator behavior = bodyObject?.GetComponent<JellyBagIndicator>();
-
-            if (behavior) behavior.CreateRadius(true, bodyObject);
-            if (inventory && behavior) behavior.UpdateRadius(inventory);
-        }
-
-        public void Serialize(NetworkWriter writer) => writer.Write(NetID);
-    }
-
-    /*
-    private GameObject RadiusObject;
-    private bool ToggleVisual
-    {
-        get { return RadiusObject; }
-        set
-        {
-            if (ToggleVisual == value) return;
-            RadiusObject = CreateRadius(value);
-        }
-    }
-
-    [ItemDefAssociation(useOnServer = true, useOnClient = true)]
-    public static ItemDef GetItemDef() => JellyBagItem.Item_Enabled.Value ? JellyBagItem.ItemDef : null;
-
-    public void OnEnable()
-    {
-        ToggleVisual = true;
-        Inventory.onInventoryChangedGlobal += UpdateRadius;
-    }
-    public void OnDisable()
-    {
-        ToggleVisual = false;
-        Inventory.onInventoryChangedGlobal -= UpdateRadius;
-    }
-
-    public void UpdateRadius(Inventory inventory)
-    {
-        CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
-        CharacterBody body = charMaster ? charMaster.GetBody() : null;
-
-        if (body && body == this.body)
-        {
-            int itemCount = inventory.GetItemCount(JellyBagItem.ItemDef);
+            SetPrefab(true);
 
             if (itemCount > 0)
             {
-                float radius = JellyBagItem.Radius.Value;
-                float itemScale = JellyBagItem.Radius_Stack.Value * (itemCount - 1);
+                float radius    = JellyBagItem.Radius.Value;
 
-                if (RadiusObject)
+                if (JellyBagItem.Radius_Stack.Value > 0)
                 {
-                    Transform radiusVisual = RadiusObject.transform.Find("Radius, Spherical");
-                    if (radiusVisual) radiusVisual.localScale = Vector3.one * (radius + itemScale) * 2;
+                    float itemScale = JellyBagItem.Radius_Stack.Value * (itemCount - 1);
+                    radius += itemScale;
                 }
+
+                SetRadius(radius);
+                body.TransmitItemBehavior(new CharacterBody.NetworkItemBehaviorData(JellyBagItem.ItemDef.itemIndex, radius));
             }
         }
     }
-    public GameObject CreateRadius(bool enabled)
+
+    public void HandleNetworkItemBehaviorUpdate(CharacterBody.NetworkItemBehaviorData itemBehaviorData)
     {
-        if (enabled)
+        if (itemBehaviorData.itemIndex == JellyBagItem.ItemDef.itemIndex) SetRadius(itemBehaviorData.floatValue);
+    }
+
+    private void SetPrefab(bool active)
+    {
+        if (active && !RadiusPrefab)
         {
-            GameObject radius = Instantiate(JellyBagHooks.RadiusEffect, body.corePosition, Quaternion.identity);
-            radius.GetComponent<NetworkedBodyAttachment>().AttachToGameObjectAndSpawn(gameObject, null);
-
-            return radius;
+            RadiusPrefab = Instantiate(JellyBagHooks.RadiusEffect, body.GetComponent<CharacterBody>().corePosition, Quaternion.identity);
+            SphereIndicator = RadiusPrefab.transform.Find("Radius, Spherical").gameObject;
+            RadiusPrefab.transform.SetParent(body.GetComponent<CharacterBody>().transform);
         }
-
-        Destroy(RadiusObject);
-        return null;
-
-        /*
-        GameObject radius = Instantiate(JellyBagHooks.RadiusEffect, body.corePosition, Quaternion.identity);
-        radius.GetComponent<NetworkedBodyAttachment>().AttachToGameObjectAndSpawn(gameObject, null);
-
-        return radius;
-
-        if (value)
+        else if (!active)
         {
-            RadiusObject = CreateRadius();
-
-            return;
+            Destroy(RadiusPrefab);
+            RadiusPrefab = null;
+            SphereIndicator = null;
         }
-
-        Destroy(RadiusObject);
-        RadiusObject = null;
-        */
+    }
+    private void SetRadius(float diameter)
+    {
+        if (SphereIndicator) SphereIndicator.transform.localScale = Vector3.one * diameter * 2;
+    }
 }
 
 public class JellyBagOrb : Orb
