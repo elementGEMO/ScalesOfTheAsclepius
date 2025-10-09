@@ -2,19 +2,11 @@
 using RoR2;
 using RoR2.Orbs;
 using RoR2.Items;
-using MonoMod.Cil;
-using Mono.Cecil.Cil;
 using UnityEngine;
-using UnityEngine.Networking;
 using System.Collections.Generic;
 using UnityEngine.AddressableAssets;
 using RoR2BepInExPack.GameAssetPathsBetter;
 using System;
-using R2API.Networking.Interfaces;
-using static UnityEngine.UI.GridLayoutGroup;
-using HG;
-using static ak.wwise;
-using R2API.Networking;
 
 namespace ScalesAsclepius;
 public class JellyBagHooks
@@ -36,24 +28,8 @@ public class JellyBagHooks
             CreateRadiusEffect();
 
             GlobalEventManager.onServerDamageDealt += GlobalEventManager_onServerDamageDealt;
-            //Inventory.onInventoryChangedGlobal += Inventory_onInventoryChangedGlobal;
-            //NetworkingAPI.RegisterMessageType<JellyBagIndicator.JellyBagIndicatorSync>();
         }
     }
-
-    /*
-    private void Inventory_onInventoryChangedGlobal(Inventory inventory)
-    {
-        CharacterMaster charMaster = inventory.GetComponent<CharacterMaster>();
-        CharacterBody body = charMaster ? charMaster.GetBody() : null;
-
-        if (body)
-        {
-            int itemCount = inventory.GetItemCount(JellyBagItem.ItemDef);
-            if (itemCount > 0) new JellyBagIndicator.JellyBagIndicatorSync(body.netId).Send(NetworkDestination.Clients);
-        }
-    }
-    */
 
     private void CreateOrbEffect()
     {

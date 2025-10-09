@@ -25,6 +25,7 @@ public class BubbleWrapHooks
             On.RoR2.CharacterBody.AddTimedBuff_BuffDef_float += CharacterBody_AddTimedBuff_BuffDef_float;
         }
     }
+
     private static void CreateBubbleEffect()
     {
         GameObject tempPrefab   = Addressables.LoadAsset<GameObject>(RoR2_DLC1_BearVoid.BearVoidProc_prefab).WaitForCompletion().InstantiateClone("BubbleWrapProc");

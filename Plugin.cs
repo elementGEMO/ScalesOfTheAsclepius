@@ -104,6 +104,9 @@ namespace ScalesAsclepius
             new IVBagItem();
             new IVBagHooks();
 
+            new PottingSoilItem();
+            new PottingSoilHooks();
+
             // Void Common Tier Items
             new BubbleWrapItem();
             new BubbleWrapHooks();
@@ -113,9 +116,8 @@ namespace ScalesAsclepius
             new JellyBagHooks();
 
             // Legendary Tier Items
-            new HabitatChartItem();
-            new HabitatChartCountItem();
-            new HabitatChartHooks();
+            new CollectorsCompassItem();
+            new CollectorsCompassHooks();
         }
 
         private void SetUpAssets()
