@@ -56,8 +56,8 @@ public class JellyBagItem : ItemBase
 
         Threshold = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
-            "Damage Threshold", 50f,
-            "[ 50 = 50% | Damaged Required to Proc ]"
+            "Damage Threshold", 25f,
+            "[ 25 = 25% | Damaged Required to Proc ]"
         );
         Threshold_Stack = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",

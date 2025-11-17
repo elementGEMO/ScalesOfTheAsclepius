@@ -93,6 +93,7 @@ namespace ScalesAsclepius
         private void CreateBuffs()
         {
             new HealFromDebuff();
+            new CompassFoundBuff();
         }
         private void CreateItems()
         {

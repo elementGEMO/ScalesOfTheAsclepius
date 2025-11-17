@@ -7,6 +7,7 @@ using UnityEngine.AddressableAssets;
 using RoR2BepInExPack.GameAssetPathsBetter;
 using System.Collections.Generic;
 using UnityEngine.Networking;
+using static UnityEngine.UI.GridLayoutGroup;
 
 namespace ScalesAsclepius;
 public class CollectorsCompassHooks
@@ -15,6 +16,7 @@ public class CollectorsCompassHooks
     public static bool ItemEnabled;
     public static GameObject HealthPopUp;
     public static GameObject ArrowPrefab;
+    public static GameObject RoR2Indicator;
     public static int ActivateCount;
 
     public CollectorsCompassHooks()
@@ -26,9 +28,10 @@ public class CollectorsCompassHooks
             ActivateCount = 0;
 
             CreateIcon();
-            CreateArrow();
+            CreateArrows();
             SetUpBarrel();
 
+            RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
             SceneDirector.onPostPopulateSceneServer += SceneDirector_onPostPopulateSceneServer;
             On.RoR2.PurchaseInteraction.Awake += PurchaseInteraction_Awake;
             On.RoR2.PurchaseInteraction.OnInteractionBegin += PurchaseInteraction_OnInteractionBegin;
@@ -55,11 +58,13 @@ public class CollectorsCompassHooks
 
         HealthPopUp = tempPrefab;
     }
-    private void CreateArrow()
+    private void CreateArrows()
     {
         GameObject tempPrefab = Addressables.LoadAssetAsync<GameObject>(RoR2_Base_Common.BossPositionIndicator_prefab).WaitForCompletion().InstantiateClone("CompassPositionIndicator");
-        
+        GameObject RoR2Prefab = Addressables.LoadAssetAsync<GameObject>(RoR2_Base_Common.PoiPositionIndicator_prefab).WaitForCompletion();
+
         ArrowPrefab = tempPrefab;
+        RoR2Indicator = RoR2Prefab;
     }
     private void SetUpBarrel()
     {
@@ -76,14 +81,14 @@ public class CollectorsCompassHooks
 
             while (!interactable && searchFailSafe < Math.Pow(CompassList.AllInteractables.Count, 2))
             {
-                int arraySize = CompassList.AllInteractables.Count;
-                int randIndex = UnityEngine.Random.RandomRange(0, arraySize - 1);
-                CompassList tempInteract = CompassList.AllInteractables[randIndex];
+                int arraySize               = CompassList.AllInteractables.Count;
+                int randIndex               = UnityEngine.Random.RandomRange(0, arraySize - 1);
+                CompassList tempInteract    = CompassList.AllInteractables[randIndex];
 
                 if (tempInteract)
                 {
-                    PurchaseInteraction purchase = tempInteract.gameObject.GetComponent<PurchaseInteraction>();
-                    BarrelInteraction barrel = tempInteract.gameObject.GetComponent<BarrelInteraction>();
+                    PurchaseInteraction purchase    = tempInteract.gameObject.GetComponent<PurchaseInteraction>();
+                    BarrelInteraction barrel        = tempInteract.gameObject.GetComponent<BarrelInteraction>();
 
                     if (purchase && purchase.available) interactable = tempInteract;
                     else if (barrel && !barrel.opened) interactable = tempInteract;
@@ -94,9 +99,9 @@ public class CollectorsCompassHooks
 
             if (interactable)
             {
-                GameObject interactModel = interactable.gameObject;
-                GameObject markEffect = UnityEngine.Object.Instantiate(HealthPopUp, interactModel.transform.position, Quaternion.identity);
-                Highlight outlineEffect = interactable.gameObject.GetComponent<Highlight>();
+                GameObject interactModel    = interactable.gameObject;
+                GameObject markEffect       = UnityEngine.Object.Instantiate(HealthPopUp, interactModel.transform.position, Quaternion.identity);
+                Highlight outlineEffect     = interactable.gameObject.GetComponent<Highlight>();
 
                 markEffect.transform.position += new Vector3(0, 4, 0);
                 outlineEffect.highlightColor = Highlight.HighlightColor.custom;
@@ -125,6 +130,8 @@ public class CollectorsCompassHooks
     {
         ActivateCount++;
 
+        Util.PlaySound("Play_env_hiddenLab_laptop_sequence_lock", interactable);
+
         component.IsMarked = false;
         interactable.GetComponent<Highlight>().highlightColor = Highlight.HighlightColor.interactive;
         interactable.GetComponent<Highlight>().isOn = false;
@@ -133,7 +140,30 @@ public class CollectorsCompassHooks
 
         if (ActivateCount >= CollectorsCompassItem.InteractAmount.Value)
         {
-            Log.Message("Pressed ... " + CollectorsCompassItem.InteractAmount.Value + " Interactables");
+            var allyListReadOnly                = TeamComponent.GetTeamMembers(TeamIndex.Player);
+            List<CharacterBody> playerAllies    = [];
+
+            foreach (TeamComponent team in allyListReadOnly)
+            {
+                CharacterBody ally                      = team.body;
+                PlayerCharacterMasterController player  = ally.master ? ally.master.playerCharacterMasterController : null;
+
+                if (player) playerAllies.Add(ally);
+            }
+
+            foreach (CharacterBody ally in playerAllies)
+            {
+                if (ally) ally.AddBuff(CompassFoundBuff.BuffDef);
+            }
+
+            foreach (CompassList interact in CompassList.AllInteractables)
+            {
+                GameObject interactObject = interact ? interact.gameObject : null;
+                if (interactObject) interactObject.AddComponent<PermanentReveal>();
+            }
+
+            Util.PlaySound("Play_UI_rustedLockbox_open", interactable);
+
             return;
         }
 
@@ -147,6 +177,30 @@ public class CollectorsCompassHooks
         }
     }
 
+    private void RecalculateStatsAPI_GetStatCoefficients(CharacterBody sender, RecalculateStatsAPI.StatHookEventArgs args)
+    {
+        if (sender.HasBuff(CompassFoundBuff.BuffDef))
+        {
+            int itemCount       = Util.GetItemCountForTeam(sender.teamComponent.teamIndex, CollectorsCompassItem.ItemDef.itemIndex, false, true);
+            float healthMult    = CollectorsCompassItem.Health_Multiply.Value;
+            float speedMult     = CollectorsCompassItem.Speed_Multiply.Value;
+
+            if (CollectorsCompassItem.Health_Multiply_Stack.Value > 0)
+            {
+                float itemScale = CollectorsCompassItem.Health_Multiply_Stack.Value * (itemCount - 1);
+                healthMult += itemScale;
+            }
+
+            if (CollectorsCompassItem.Speed_Multiply_Stack.Value > 0)
+            {
+                float itemScale = CollectorsCompassItem.Speed_Multiply_Stack.Value * (itemCount - 1);
+                speedMult += itemScale;
+            }
+
+            args.healthTotalMult += healthMult / 100f;
+            args.moveSpeedMultAdd += speedMult / 100f;
+        }
+    }
     private void SceneDirector_onPostPopulateSceneServer(SceneDirector self)
     {
         ActivateCount = 0;
@@ -239,5 +293,59 @@ public class CollectorsCompassHooks
         public void OnDisable() => RemoveFromList();
         public void OnDestroy() => RemoveFromList();
         public void RemoveFromList() => AllInteractables.Remove(this);
+    }
+    public class PermanentReveal : NetworkBehaviour
+    {
+        private PositionIndicator PosIndicator;
+        private PurchaseInteraction PurchaseInteract;
+        private BarrelInteraction BarrelInteract;
+        public static void ShowObject(GameObject gameObject)
+        {
+            if (!gameObject.GetComponent<PermanentReveal>()) gameObject.AddComponent<PermanentReveal>();
+        }
+
+        public void OnEnable()
+        {
+            if (gameObject)
+            {
+                NetworkIdentity networkComponent = gameObject.GetComponent<NetworkIdentity>();
+                if (networkComponent) {
+                    foreach (PlayerCharacterMasterController masterController in PlayerCharacterMasterController.instances) {
+                        if (masterController != null && masterController.isPingTheSameNetworkObject(networkComponent)) {
+                            Destroy(this);
+                            return;
+                        }
+                    }
+                }
+
+                GameObject indicatorPrefab = Instantiate(RoR2Indicator, transform.position, Quaternion.identity);
+
+                PosIndicator = indicatorPrefab.GetComponent<PositionIndicator>();
+                PosIndicator.insideViewObject.GetComponent<SpriteRenderer>().sprite = RoR2.UI.PingIndicator.GetInteractableIcon(gameObject);
+                PosIndicator.targetTransform = transform;
+
+                PurchaseInteract = gameObject.GetComponent<PurchaseInteraction>();
+                BarrelInteract = gameObject.GetComponent<BarrelInteraction>();
+            }
+        }
+        public void OnDisable()
+        {
+            if (PosIndicator)
+            {
+                Destroy(PosIndicator.gameObject);
+                PosIndicator = null;
+            }
+        }
+
+        public void FixedUpdate()
+        {
+            bool isNotValid = false;
+
+            if (PurchaseInteract && !PurchaseInteract.available) isNotValid = true;
+            if (BarrelInteract && BarrelInteract.opened) isNotValid = true;
+
+            if (isNotValid) OnDisable();
+            else if (!isNotValid && !PosIndicator) OnEnable();
+        }
     }
 }

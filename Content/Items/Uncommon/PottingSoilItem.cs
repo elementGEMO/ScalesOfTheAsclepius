@@ -21,7 +21,7 @@ public class PottingSoilItem : ItemBase
     protected override bool IsEnabled()
     {
         Item_Enabled = SotAPlugin.Instance.Config.Bind(
-            DisplayName + " - Item", "Enable Item", true,
+            DisplayName + " - Item", "Enable Item", false,
             "[ True = Enabled | False = Disabled ]"
         );
 

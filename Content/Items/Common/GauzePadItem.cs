@@ -43,34 +43,28 @@ public class GauzePadItem : ItemBase
             DisplayName + " - Item",
             "Regeneration Amount", 6f,
             "[ 6 = +6 hp/s | Regeneration Amount ]"
-        );
+        ).PostConfig(PluginConfig.MathProcess.Max, 0);
         Heal_Amount_Stack = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
             "Regeneration Amount Stack", 6f,
             "[ 6 = +6 hp/s | Regeneration Amount per Item Stack | 0 to Disable ]"
-        );
+        ).PostConfig(PluginConfig.MathProcess.Max, 0);
 
         Duration = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
             "Effect Duration", 3f,
             "[ 3 = 3s | Duration for Regeneration ]"
-        );
+        ).PostConfig(PluginConfig.MathProcess.Max, 0);
         Duration_Stack = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item",
             "Effect Duration Stack", 0f,
             "[ 1 = +1s | Duration for Regeneration per Item Stack | 0 to Disable ]"
-        );
+        ).PostConfig(PluginConfig.MathProcess.Max, 0);
 
         Item_Enabled = SotAPlugin.Instance.Config.Bind(
             DisplayName + " - Item", "Enable Item", true,
             "[ True = Enabled | False = Disabled ]"
         );
-
-        Heal_Amount.Value = Mathf.Max(Heal_Amount.Value, 0);
-        Heal_Amount_Stack.Value = Mathf.Max(Heal_Amount_Stack.Value, 0);
-
-        Duration.Value = Mathf.Max(Duration.Value, 0);
-        Duration_Stack.Value = Mathf.Max(Duration_Stack.Value, 0);
 
         return Item_Enabled.Value;
     }
@@ -92,9 +86,6 @@ public class GauzePadItem : ItemBase
         modelParam.minDistance = 0.05f * 25f;
         modelParam.maxDistance = 0.25f * 25f;
         modelParam.modelRotation = new Quaternion(0.0115291597f, -0.587752283f, 0.0455321521f, -0.807676435f);
-
-        FloatingPointFix modelScale = PickupModelPrefab.AddComponent<FloatingPointFix>();
-        modelScale.sizeModifier = 1f;
     }
     protected override ItemDisplayRuleDict ItemDisplay()
     {
