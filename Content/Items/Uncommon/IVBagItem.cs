@@ -20,7 +20,7 @@ public class IVBagItem : ItemBase
     protected override string Name => "IVBag";
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier2;
-    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility];
+    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility, ItemTag.CanBeTemporary];
     protected override bool IsRemovable => true;
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("IVBagModel");

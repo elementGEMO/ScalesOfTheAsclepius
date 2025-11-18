@@ -22,7 +22,7 @@ public class CollectorsCompassItem : ItemBase
     protected override string Name => "CollectorsCompass";
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier3;
-    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility, ItemTag.AIBlacklist];
+    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility, ItemTag.AIBlacklist, ItemTag.CanBeTemporary];
     protected override bool IsRemovable => true;
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("collectorsCompassModel");

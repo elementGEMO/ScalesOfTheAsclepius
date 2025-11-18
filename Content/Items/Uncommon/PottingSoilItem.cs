@@ -13,7 +13,7 @@ public class PottingSoilItem : ItemBase
     protected override string Name => "PottingSoil";
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier2;
-    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility];
+    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility, ItemTag.CanBeTemporary];
     protected override bool IsRemovable => true;
 
     protected override string DisplayName => "Potting Soil";

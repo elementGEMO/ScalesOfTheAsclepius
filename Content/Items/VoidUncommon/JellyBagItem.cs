@@ -21,7 +21,7 @@ public class JellyBagItem : ItemBase
     protected override string Name => "JellyBag";
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.VoidTier2;
-    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility];
+    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.Utility, ItemTag.CanBeTemporary];
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("jellyBagModel");
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("jellyBagRender");

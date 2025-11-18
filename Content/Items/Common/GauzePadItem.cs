@@ -21,7 +21,7 @@ public class GauzePadItem : ItemBase
     protected override string Name => "GauzePad";
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.Tier1;
-    protected override ItemTag[] Tags => [ItemTag.Healing];
+    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.CanBeTemporary];
     protected override bool IsRemovable => true;
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("gauzePadModel");

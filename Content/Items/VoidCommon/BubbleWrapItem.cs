@@ -19,7 +19,7 @@ public class BubbleWrapItem : ItemBase
     protected override string Name => "BubbleWrap";
     public static ItemDef ItemDef;
     protected override CombinedItemTier Tier => ItemTier.VoidTier1;
-    protected override ItemTag[] Tags => [ItemTag.Healing];
+    protected override ItemTag[] Tags => [ItemTag.Healing, ItemTag.CanBeTemporary];
 
     protected override GameObject PickupModelPrefab => SotAPlugin.Bundle.LoadAsset<GameObject>("bubbleWrapModel");
     protected override Sprite PickupIconSprite => SotAPlugin.Bundle.LoadAsset<Sprite>("bubbleIconRender");
