@@ -26,7 +26,7 @@ namespace ScalesAsclepius
         public const string PluginGUID      = PluginCreator + "." + PluginName;
         public const string PluginCreator   = "noodleGemo";
         public const string PluginName      = "ScalesoftheAsclepius";
-        public const string PluginVersion   = "1.0.0";
+        public const string PluginVersion   = "1.0.2";
 
         public static SotAPlugin Instance   { get; private set; }
         public static AssetBundle Bundle    { get; private set; }
