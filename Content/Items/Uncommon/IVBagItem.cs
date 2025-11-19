@@ -37,7 +37,7 @@ public class IVBagItem : ItemBase
         string.Format("sharing " + "{0}% ".Style(FontColor.cIsHealing) + "({1}% per stack) ".Style(FontColor.cStack).OptText(Heal_Percent_Stack.Value != 0) + "of " + "all healing".Style(FontColor.cIsHealing) + ".",
         RoundVal(Heal_Percent.Value), RoundVal(Heal_Percent_Stack.Value).SignVal())
     ]);
-    protected override string PickupText => "Tether to " + "a nearby ally".OptText("nearby allies", Target_Count.Value > 1) + ", sharing heals and gaining armor." ;
+    protected override string PickupText => "Tether to " + "a nearby ally".OptText("nearby allies", Target_Count.Value > 1) + ", sharing all healing." ;
 
     protected override bool IsEnabled()
     {
