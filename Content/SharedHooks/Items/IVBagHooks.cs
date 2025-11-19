@@ -3,8 +3,6 @@ using RoR2.Items;
 using R2API;
 using System;
 using UnityEngine;
-using MonoMod.Cil;
-using Mono.Cecil.Cil;
 using System.Collections.Generic;
 using UnityEngine.Networking;
 using UnityEngine.AddressableAssets;
@@ -15,7 +13,6 @@ using RoR2BepInExPack.GameAssetPathsBetter;
 namespace ScalesAsclepius;
 public class IVBagHooks
 {
-    //private static readonly string InternalName = "IVBagHooks";
     public static bool ItemEnabled;
     public static GameObject TetherPrefab;
     public static ModdedProcType HealShare;
@@ -28,9 +25,39 @@ public class IVBagHooks
         {
             CreateTether();
 
+            HealthComponent.onCharacterHealServer += HealthComponent_onCharacterHealServer;
             NetworkingAPI.RegisterMessageType<IVBagTether.IVTetherSync>();
-            IL.RoR2.HealthComponent.Heal += HealthComponent_Heal1;
             HealShare = ProcTypeAPI.ReserveProcType();
+        }
+    }
+
+    private void HealthComponent_onCharacterHealServer(HealthComponent self, float amount, ProcChainMask procChainMask)
+    {
+        CharacterBody body = self.GetComponent<CharacterBody>();
+        IVBagTether bagComponent = body?.GetComponent<IVBagTether>();
+        int itemCount = body?.inventory ? body.inventory.GetItemCount(IVBagItem.ItemDef) : 0;
+        bool inProcChain = procChainMask.HasModdedProc(HealShare);
+
+        if (amount > 0.5f && bagComponent?.TargetLinks.Count > 0 && !inProcChain)
+        {
+            foreach (Transform target in bagComponent.TargetLinks)
+            {
+                HealthComponent ally = target.GetComponent<HealthComponent>();
+
+                if (!ally) continue;
+
+                ProcChainMask healMask = new(); healMask.AddModdedProc(HealShare);
+                float healPercent = IVBagItem.Heal_Percent.Value;
+
+                if (IVBagItem.Heal_Percent_Stack.Value > 0)
+                {
+                    float itemScale = IVBagItem.Heal_Percent_Stack.Value * (itemCount - 1);
+                    healPercent += itemScale;
+                }
+
+                ally.Heal(amount * healPercent / 100f, healMask);
+                new IVBagTether.IVTetherSync(body.netId).Send(NetworkDestination.Clients);
+            }
         }
     }
 
@@ -53,55 +80,6 @@ public class IVBagHooks
 
         healMat.SetColor("_TintColor", new Color(0, 0, 0));
         healSpot.sharedMaterial = healMat;
-    }
-
-    private void HealthComponent_Heal1(ILContext il)
-    {
-        ILCursor cursor = new (il);
-
-        if (cursor.TryGotoNext(
-            x => x.MatchLdarg(0),
-            x => x.MatchLdfld<HealthComponent>(nameof(HealthComponent.health)),
-            x => x.MatchLdloc(0),
-            x => x.MatchSub(),
-            x => x.MatchRet()
-        ))
-        {
-            cursor.Emit(OpCodes.Ldarg, 0);
-            cursor.Emit(OpCodes.Ldarg, 1);
-            cursor.Emit(OpCodes.Ldarg, 2);
-            cursor.Emit(OpCodes.Ldarg, 3);
-
-            cursor.EmitDelegate<Action<HealthComponent, float, ProcChainMask, bool>>((self, amount, procChainMask, nonRegen) =>
-            {
-                CharacterBody body          = self.GetComponent<CharacterBody>();
-                IVBagTether bagComponent    = body?.GetComponent<IVBagTether>();
-                int itemCount               = body?.inventory ? body.inventory.GetItemCount(IVBagItem.ItemDef) : 0;
-                bool inProcChain            = procChainMask.HasModdedProc(HealShare);
-
-                if (amount > 0.5f && bagComponent?.TargetLinks.Count > 0 && !inProcChain)
-                {
-                    foreach (Transform target in bagComponent.TargetLinks)
-                    {
-                        HealthComponent ally = target.GetComponent<HealthComponent>();
-
-                        if (!ally) continue;
-
-                        ProcChainMask healMask  = new(); healMask.AddModdedProc(HealShare);
-                        float healPercent       = IVBagItem.Heal_Percent.Value;
-
-                        if (IVBagItem.Heal_Percent_Stack.Value > 0)
-                        {
-                            float itemScale = IVBagItem.Heal_Percent_Stack.Value * (itemCount - 1);
-                            healPercent += itemScale;
-                        }
-
-                        ally.Heal(amount * healPercent / 100f, healMask);
-                        new IVBagTether.IVTetherSync(body.netId).Send(NetworkDestination.Clients);
-                    }
-                }
-            });
-        }
     }
 
     private void CharacterBody_OnInventoryChanged(On.RoR2.CharacterBody.orig_OnInventoryChanged orig, CharacterBody self)
