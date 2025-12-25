@@ -33,10 +33,10 @@ public class IVBagHooks
 
     private void HealthComponent_onCharacterHealServer(HealthComponent self, float amount, ProcChainMask procChainMask)
     {
-        CharacterBody body = self.GetComponent<CharacterBody>();
-        IVBagTether bagComponent = body?.GetComponent<IVBagTether>();
-        int itemCount = body?.inventory ? body.inventory.GetItemCount(IVBagItem.ItemDef) : 0;
-        bool inProcChain = procChainMask.HasModdedProc(HealShare);
+        CharacterBody body          = self.GetComponent<CharacterBody>();
+        IVBagTether bagComponent    = body?.GetComponent<IVBagTether>();
+        int itemCount               = body?.inventory ? body.inventory.GetItemCount(IVBagItem.ItemDef) : 0;
+        bool inProcChain            = procChainMask.HasModdedProc(HealShare);
 
         if (amount > 0.5f && bagComponent?.TargetLinks.Count > 0 && !inProcChain)
         {

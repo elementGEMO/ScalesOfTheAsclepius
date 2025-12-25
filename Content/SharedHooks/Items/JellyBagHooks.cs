@@ -16,6 +16,7 @@ public class JellyBagHooks
     public static EffectDef OrbEffect;
     public static EffectDef HitEffect;
     public static GameObject RadiusEffect;
+    public static NetworkSoundEventDef ArriveSound;
 
     public JellyBagHooks()
     {
@@ -23,6 +24,7 @@ public class JellyBagHooks
 
         if (ItemEnabled)
         {
+            CreateSound();
             CreateOrbEffect();
             CreateHitEffect();
             CreateRadiusEffect();
@@ -30,6 +32,8 @@ public class JellyBagHooks
             GlobalEventManager.onServerDamageDealt += GlobalEventManager_onServerDamageDealt;
         }
     }
+
+    private void CreateSound() => ArriveSound = SASounds.CreateNetworkSoundDef("Play_UI_arenaMode_voidCollapse_select");
 
     private void CreateOrbEffect()
     {
@@ -288,7 +292,8 @@ public class JellyBagOrb : Orb
         if (targetBody?.inventory)
         {
             targetHealth.Heal(healAmount, new ProcChainMask());
-            Util.PlaySound("Play_UI_arenaMode_voidCollapse_select", targetBody.gameObject);
+            //Util.PlaySound("Play_UI_arenaMode_voidCollapse_select", targetBody.gameObject);
+            EffectManager.SimpleSoundEffect(JellyBagHooks.ArriveSound.index, targetBody.gameObject.transform.position, true);
             EffectManager.SpawnEffect(JellyBagHooks.HitEffect.prefab, new EffectData
             {
                 rootObject = targetBody.gameObject,

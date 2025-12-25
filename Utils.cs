@@ -76,3 +76,16 @@ internal class SAOverlay
         allOverlays[overlayCount] = overlayMaterial;
     }
 }
+
+internal class SASounds() {
+    public static NetworkSoundEventDef CreateNetworkSoundDef(string soundName) {
+        NetworkSoundEventDef soundDef = ScriptableObject.CreateInstance<NetworkSoundEventDef>();
+
+        soundDef.eventName = soundName;
+        soundDef.name = soundName;
+
+        ContentAddition.AddNetworkSoundEventDef(soundDef);
+
+        return soundDef;
+    }
+}

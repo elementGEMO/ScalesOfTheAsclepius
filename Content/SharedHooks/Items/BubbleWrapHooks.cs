@@ -97,7 +97,7 @@ public class BubbleWrapHooks
 
     private void CharacterBody_AddTimedBuff_BuffDef_float(On.RoR2.CharacterBody.orig_AddTimedBuff_BuffDef_float orig, CharacterBody self, BuffDef buffDef, float duration)
     {
-        if (self?.inventory)
+        if (self?.inventory && buffDef)
         {
             int itemCount       = self.inventory.GetItemCount(BubbleWrapItem.ItemDef);
             bool isHarmful      = buffDef.isDebuff || buffDef.isDOT || buffDef.isCooldown;
